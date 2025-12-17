@@ -85,6 +85,33 @@ export default function ProfileScreen({ navigation }) {
         )}
       </View>
 
+      {/* Driver Application */}
+      {!user?.is_driver && !user?.driver_application_status && !user?.is_manager && !user?.is_admin && (
+        <TouchableOpacity 
+          style={styles.driverApplyButton}
+          onPress={() => navigation.navigate('DriverApplication')}
+        >
+          <Ionicons name="car-sport" size={24} color="#fff" />
+          <Text style={styles.dashboardButtonText}>Apply as Driver</Text>
+          <Ionicons name="chevron-forward" size={24} color="#fff" />
+        </TouchableOpacity>
+      )}
+
+      {/* Driver Application Status */}
+      {user?.driver_application_status === 'pending' && (
+        <View style={styles.statusCard}>
+          <Ionicons name="time" size={24} color="#FF9800" />
+          <Text style={styles.statusText}>Driver Application Pending Approval</Text>
+        </View>
+      )}
+
+      {user?.driver_application_status === 'rejected' && (
+        <View style={styles.statusCardRejected}>
+          <Ionicons name="close-circle" size={24} color="#f44336" />
+          <Text style={styles.statusTextRejected}>Driver Application Rejected</Text>
+        </View>
+      )}
+
       {/* Manager Dashboard Entry */}
       {user?.is_manager && (
         <TouchableOpacity 
@@ -215,6 +242,50 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     flex: 1,
+    marginLeft: 10,
+  },
+  driverApplyButton: {
+    backgroundColor: '#2196F3',
+    marginTop: 15,
+    padding: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 8,
+    marginHorizontal: 15,
+  },
+  statusCard: {
+    backgroundColor: '#FFF3E0',
+    marginTop: 15,
+    padding: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 8,
+    marginHorizontal: 15,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF9800',
+  },
+  statusCardRejected: {
+    backgroundColor: '#FFEBEE',
+    marginTop: 15,
+    padding: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 8,
+    marginHorizontal: 15,
+    borderLeftWidth: 4,
+    borderLeftColor: '#f44336',
+  },
+  statusText: {
+    color: '#E65100',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 10,
+  },
+  statusTextRejected: {
+    color: '#c62828',
+    fontSize: 16,
+    fontWeight: '600',
     marginLeft: 10,
   },
   logoutButton: {

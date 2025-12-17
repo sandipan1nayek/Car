@@ -17,6 +17,7 @@ import ProfileScreen from '../screens/customer/ProfileScreen';
 import ChatScreen from '../screens/customer/ChatScreen';
 import ManagerDashboardScreen from '../screens/customer/ManagerDashboardScreen';
 import AdminDashboardScreen from '../screens/customer/AdminDashboardScreen';
+import DriverApplicationScreen from '../screens/customer/DriverApplicationScreen';
 
 // Driver Screens
 import DriverDashboardScreen from '../screens/driver/DriverDashboardScreen';
@@ -127,6 +128,11 @@ function MainAppStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MainTabs" component={CustomerTabs} />
+      <Stack.Screen 
+        name="DriverApplication" 
+        component={DriverApplicationScreen}
+        options={{ headerShown: false }}
+      />
       <Stack.Screen 
         name="ManagerDashboard" 
         component={ManagerDashboardScreen}

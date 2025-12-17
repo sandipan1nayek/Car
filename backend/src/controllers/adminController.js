@@ -4,6 +4,111 @@ const Transaction = require('../models/Transaction');
 const bcrypt = require('bcryptjs');
 const { sendEmail, emailTemplates } = require('../services/emailService');
 
+// @route   GET /api/admin/drivers/pending
+// @desc    Get all pending driver applications
+// @access  Private (Admin only)
+exports.getPendingDrivers = async (req, res) => {
+  try {
+    const pendingDrivers = await User.find({ 
+      driver_application_status: 'pending' 
+    }).select('name email phone vehicle_info driver_documents createdAt');
+
+    res.json({ drivers: pendingDrivers });
+  } catch (error) {
+    console.error('Get pending drivers error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// @route   POST /api/admin/drivers/:userId/approve
+// @desc    Approve driver application
+// @access  Private (Admin only)
+exports.approveDriver = async (req, res) => {
+  console.log('🚀🚀🚀 CONTROLLER FUNCTION CALLED 🚀🚀🚀');
+  try {
+    console.log('=========== APPROVE DRIVER REQUEST ===========');
+    console.log('Full req.params:', req.params);
+    console.log('Full req.body:', req.body);
+    console.log('Full req.url:', req.url);
+    console.log('Full req.method:', req.method);
+    
+    const { userId } = req.params;
+    console.log('Extracted userId:', userId);
+    console.log('Type of userId:', typeof userId);
+    console.log('userId length:', userId ? userId.length : 0);
+    console.log('userId is valid ObjectId:', userId && userId.match(/^[0-9a-fA-F]{24}$/));
+
+    const user = await User.findById(userId);
+    console.log('User found:', user ? user.name : 'NOT FOUND');
+    console.log('User object:', user ? { _id: user._id, name: user.name, email: user.email } : null);
+    
+    if (!user) {
+      console.log('❌ Returning 404 - User not found');
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.driver_application_status !== 'pending') {
+      return res.status(400).json({ error: 'No pending application for this user' });
+    }
+
+    // Approve driver
+    user.is_driver = true;
+    user.driver_application_status = 'approved';
+    user.driver_status = 'offline';
+    
+    await user.save();
+
+    res.json({ 
+      message: 'Driver approved successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        is_driver: user.is_driver
+      }
+    });
+  } catch (error) {
+    console.error('Approve driver error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// @route   POST /api/admin/drivers/:userId/reject
+// @desc    Reject driver application
+// @access  Private (Admin only)
+exports.rejectDriver = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log('Rejecting driver with userId:', userId);
+
+    const user = await User.findById(userId);
+    console.log('User found:', user ? user.name : 'NOT FOUND');
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.driver_application_status !== 'pending') {
+      return res.status(400).json({ error: 'No pending application for this user' });
+    }
+
+    // Reject driver
+    user.driver_application_status = 'rejected';
+    
+    await user.save();
+
+    res.json({ 
+      message: 'Driver application rejected',
+      user: {
+        id: user._id,
+        name: user.name
+      }
+    });
+  } catch (error) {
+    console.error('Reject driver error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 // @route   GET /api/admin/dashboard
 // @desc    Get admin dashboard with advanced analytics
 // @access  Private (Admin only)

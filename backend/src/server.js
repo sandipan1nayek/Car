@@ -31,6 +31,18 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Request logger
+app.use((req, res, next) => {
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`${req.method} ${req.url}`);
+  console.log(`Path: ${req.path}`);
+  console.log(`Params:`, req.params);
+  console.log(`Body:`, req.body);
+  console.log(`Authorization:`, req.headers.authorization ? 'Present' : 'Missing');
+  console.log('='.repeat(60));
+  next();
+});
+
 // Make io available to routes
 app.set('io', io);
 

@@ -7,14 +7,19 @@ const auth = async (req, res, next) => {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
     if (!token) {
+      console.log('❌ Auth failed: No token');
       return res.status(401).json({ error: 'No authentication token provided' });
     }
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('🔑 Token decoded, userId:', decoded.userId);
+    
     const user = await User.findById(decoded.userId);
+    console.log('👤 User from token:', user ? user.name : 'NOT FOUND');
     
     if (!user) {
-      return res.status(401).json({ error: 'User not found' });
+      console.log('❌ Auth failed: User not found for userId:', decoded.userId);
+      return res.status(404).json({ error: 'User not found' });
     }
     
     if (user.is_suspended) {
@@ -47,6 +52,8 @@ const requireManager = (req, res, next) => {
 
 // Check if user has admin role
 const requireAdmin = (req, res, next) => {
+  console.log('requireAdmin middleware - User:', req.user ? req.user.name : 'NO USER');
+  console.log('requireAdmin middleware - is_admin:', req.user ? req.user.is_admin : 'NO USER');
   if (!req.user.is_admin) {
     return res.status(403).json({ error: 'Access denied. Admin role required.' });
   }

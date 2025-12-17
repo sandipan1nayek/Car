@@ -132,11 +132,55 @@ exports.getMe = async (req, res) => {
         is_admin: user.is_admin,
         driver_status: user.driver_status,
         driver_rating: user.driver_rating,
+        driver_application_status: user.driver_application_status,
         wallet_balance: user.wallet_balance
       }
     });
   } catch (error) {
     console.error('Get me error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// @route   POST /api/auth/apply-driver
+// @desc    Apply to become a driver
+// @access  Private
+exports.applyAsDriver = async (req, res) => {
+  try {
+    const { vehicle_info, driver_documents } = req.body;
+
+    // Validation
+    if (!vehicle_info || !driver_documents) {
+      return res.status(400).json({ error: 'Vehicle info and driver documents are required' });
+    }
+
+    const user = await User.findById(req.user._id);
+
+    // Check if already a driver or has pending application
+    if (user.is_driver) {
+      return res.status(400).json({ error: 'You are already a driver' });
+    }
+
+    if (user.driver_application_status === 'pending') {
+      return res.status(400).json({ error: 'You already have a pending application' });
+    }
+
+    // Update user with driver application data
+    user.vehicle_info = vehicle_info;
+    user.driver_documents = driver_documents;
+    user.driver_application_status = 'pending';
+    
+    await user.save();
+
+    res.json({
+      message: 'Driver application submitted successfully',
+      user: {
+        id: user._id,
+        driver_application_status: user.driver_application_status
+      }
+    });
+  } catch (error) {
+    console.error('Apply driver error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 };

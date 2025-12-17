@@ -12,7 +12,8 @@ const {
   unsuspendUser,
   createManager,
   removeManager,
-  getAnalytics
+  getAnalytics,
+  getPendingDrivers
 } = require('../controllers/adminController');
 
 // Get dashboard stats
@@ -47,5 +48,43 @@ router.delete('/managers/:id', auth, requireAdmin, removeManager);
 
 // Get analytics
 router.get('/analytics', auth, requireAdmin, getAnalytics);
+
+// New driver approval routes
+router.get('/drivers/pending', auth, requireAdmin, getPendingDrivers);
+router.post('/drivers/:userId/approve', auth, requireAdmin, async (req, res) => {
+  console.log('🎯 INLINE ROUTE HANDLER');
+  console.log('req.params:', req.params);
+  console.log('req.params.userId:', req.params.userId);
+  
+  try {
+    const User = require('../models/User');
+    const { userId } = req.params;
+    console.log('Looking for userId:', userId);
+    
+    const user = await User.findById(userId);
+    console.log('User result:', user ? user.name : 'NULL');
+    
+    if (!user) {
+      console.log('Sending 404');
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    if (user.driver_application_status !== 'pending') {
+      return res.status(400).json({ error: 'No pending application' });
+    }
+    
+    user.is_driver = true;
+    user.driver_application_status = 'approved';
+    user.driver_status = 'offline';
+    await user.save();
+    
+    console.log('✅ Driver approved successfully');
+    res.json({ message: 'Driver approved successfully', user: { id: user._id, name: user.name } });
+  } catch (error) {
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+router.post('/drivers/:userId/reject', auth, requireAdmin, rejectDriver);
 
 module.exports = router;

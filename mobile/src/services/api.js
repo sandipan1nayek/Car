@@ -46,6 +46,7 @@ export const authAPI = {
   signup: (data) => api.post('/auth/signup', data),
   login: (data) => api.post('/auth/login', data),
   getMe: () => api.get('/auth/me'),
+  applyAsDriver: (data) => api.post('/auth/apply-driver', data),
 };
 
 // User APIs
@@ -98,6 +99,13 @@ export const chatAPI = {
   getConversations: () => api.get('/chat/conversations'),
   getMessages: (id) => api.get(`/chat/${id}`),
   sendMessage: (subject, message) => api.post('/chat/send', { subject, message }),
+};
+
+// Admin APIs
+export const adminAPI = {
+  getPendingDrivers: () => api.get('/admin/drivers/pending'),
+  approveDriver: (userId) => api.post(`/admin/drivers/${userId}/approve`),
+  rejectDriver: (userId) => api.post(`/admin/drivers/${userId}/reject`),
 };
 
 export default api;

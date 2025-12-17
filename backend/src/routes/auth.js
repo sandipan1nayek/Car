@@ -9,5 +9,6 @@ router.post('/login', authController.login);
 
 // Protected routes
 router.get('/me', auth, authController.getMe);
+router.post('/apply-driver', auth, authController.applyAsDriver);
 
 module.exports = router;
