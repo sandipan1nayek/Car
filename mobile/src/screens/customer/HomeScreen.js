@@ -57,7 +57,7 @@ export default function HomeScreen() {
       setStep('dropoff');
     } else if (step === 'dropoff') {
       setDropoff(coords);
-      setStep('vehicle');
+      setStep('time');
       getFare(pickup, coords);
     }
   };
@@ -82,7 +82,21 @@ export default function HomeScreen() {
 
     setLoading(true);
     try {
-      const result = await rideAPI.createRide(pickup, dropoff);
+      // Calculate scheduled time based on selected time slot
+      let scheduledTime = null;
+      if (selectedTime !== 'now') {
+        const minutes = selectedTime === '15min' ? 15 : selectedTime === '30min' ? 30 : 60;
+        scheduledTime = new Date(Date.now() + minutes * 60000);
+      }
+
+      const rideData = {
+        pickup,
+        dropoff,
+        vehicle_type: vehicleType?.id,
+        scheduled_time: scheduledTime
+      };
+
+      const result = await rideAPI.createRide(rideData.pickup, rideData.dropoff, rideData.vehicle_type, rideData.scheduled_time);
       
       // Fetch updated user data to refresh wallet balance
       const userData = await authAPI.getMe();
@@ -144,8 +158,8 @@ export default function HomeScreen() {
         <Text style={styles.title}>
           {step === 'pickup' && 'Select Pickup Location'}
           {step === 'dropoff' && 'Select Dropoff Location'}
-          {step === 'vehicle' && 'Select Vehicle Type'}
           {step === 'time' && 'Select Pickup Time'}
+          {step === 'vehicle' && 'Select Vehicle Type'}
           {step === 'confirm' && 'Confirm Booking'}
         </Text>
 
@@ -165,26 +179,40 @@ export default function HomeScreen() {
 
         {step === 'vehicle' && fare && (
           <ScrollView style={{ maxHeight: 400 }}>
-            {vehicleTypes.map((vehicle) => (
-              <TouchableOpacity
-                key={vehicle.id}
-                style={[
-                  styles.vehicleCard,
-                  vehicleType?.id === vehicle.id && styles.vehicleCardSelected
-                ]}
-                onPress={() => setVehicleType(vehicle)}
-              >
-                <Ionicons name={vehicle.icon} size={32} color={vehicleType?.id === vehicle.id ? '#4CAF50' : '#000'} />
-                <View style={styles.vehicleInfo}>
-                  <Text style={styles.vehicleName}>{vehicle.name}</Text>
-                  <Text style={styles.vehicleSeats}>{vehicle.seats} seats {vehicle.desc && `• ${vehicle.desc}`}</Text>
+            {vehicleTypes.map((vehicle) => {
+              const isDisabled = selectedTime === 'now' && vehicle.id === 'shuttle';
+              return (
+                <TouchableOpacity
+                  key={vehicle.id}
+                  style={[
+                    styles.vehicleCard,
+                    vehicleType?.id === vehicle.id && styles.vehicleCardSelected,
+                    isDisabled && styles.vehicleCardDisabled
+                  ]}
+                  onPress={() => !isDisabled && setVehicleType(vehicle)}
+                  disabled={isDisabled}
+                >
+                  <Ionicons 
+                    name={vehicle.icon} 
+                    size={32} 
+                    color={isDisabled ? '#ccc' : vehicleType?.id === vehicle.id ? '#4CAF50' : '#000'} 
+                  />
+                  <View style={styles.vehicleInfo}>
+                    <Text style={[styles.vehicleName, isDisabled && styles.vehicleTextDisabled]}>
+                      {vehicle.name} {isDisabled && '(Not available for Now)'}
+                    </Text>
+                    <Text style={[styles.vehicleSeats, isDisabled && styles.vehicleTextDisabled]}>
+                      {vehicle.seats} seats {vehicle.desc && `• ${vehicle.desc}`}
+                    </Text>
                 </View>
-                <Text style={styles.vehiclePrice}>₹{Math.round(fare.fare * vehicle.price)}</Text>
+                <Text style={[styles.vehiclePrice, isDisabled && styles.vehicleTextDisabled]}>
+                  ₹{Math.round(fare.fare * vehicle.price)}
+                </Text>
               </TouchableOpacity>
-            ))}
+            )})}
             <TouchableOpacity
               style={[styles.bookButton, !vehicleType && styles.bookButtonDisabled]}
-              onPress={() => vehicleType && setStep('time')}
+              onPress={() => vehicleType && setStep('confirm')}
               disabled={!vehicleType}
             >
               <Text style={styles.bookButtonText}>Continue</Text>
@@ -214,7 +242,7 @@ export default function HomeScreen() {
             ))}
             <TouchableOpacity
               style={styles.bookButton}
-              onPress={() => setStep('confirm')}
+              onPress={() => setStep('vehicle')}
             >
               <Text style={styles.bookButtonText}>Continue</Text>
             </TouchableOpacity>
@@ -385,6 +413,13 @@ const styles = StyleSheet.create({
   vehicleCardSelected: {
     borderColor: '#4CAF50',
     backgroundColor: '#E8F5E9',
+  },
+  vehicleCardDisabled: {
+    opacity: 0.4,
+    backgroundColor: '#f5f5f5',
+  },
+  vehicleTextDisabled: {
+    color: '#999',
   },
   vehicleInfo: {
     flex: 1,

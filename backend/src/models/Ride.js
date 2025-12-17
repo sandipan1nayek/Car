@@ -51,12 +51,27 @@ const rideSchema = new mongoose.Schema({
     default: null
   },
   
+  // Vehicle type and scheduling
+  vehicle_type: {
+    type: String,
+    enum: ['bike', 'car', 'shuttle', 'special'],
+    default: 'car'
+  },
+  scheduled_time: {
+    type: Date,
+    default: null
+  },
+  
   // Timestamps
   requested_at: {
     type: Date,
     default: Date.now
   },
   accepted_at: {
+    type: Date,
+    default: null
+  },
+  pickup_time: {
     type: Date,
     default: null
   },

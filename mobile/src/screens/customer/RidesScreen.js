@@ -31,6 +31,13 @@ function RidesScreen() {
   useFocusEffect(
     React.useCallback(() => {
       loadRides();
+      
+      // Set up interval to check for late rides and update arriving time
+      const interval = setInterval(() => {
+        loadRides();
+      }, 30000); // Check every 30 seconds
+      
+      return () => clearInterval(interval);
     }, [])
   );
 
@@ -60,13 +67,120 @@ function RidesScreen() {
   };
 
   // Dummy driver data for active rides
-  const getDummyDriver = () => ({
-    name: 'John Smith',
-    phone: '+91 98765 43210',
-    rating: 4.8,
-    vehicle: 'Honda City - MH 02 AB 1234',
-    photo: `https://ui-avatars.com/api/?name=John+Smith&size=200&background=random`,
-  });
+  const getDummyDriver = (vehicleType) => {
+    const driverName = 'John Smith';
+    const carType = vehicleType === 'bike' ? 'Royal Enfield' : 
+                    vehicleType === 'shuttle' ? 'Tempo Traveller' : 'Honda City';
+    const carNumber = 'MH 02 AB 1234';
+    
+    let vehicle = '';
+    
+    if (vehicleType === 'car' || vehicleType === 'special') {
+      // Car & Personal Reservation: driver name, car type, car number
+      vehicle = `${carType} • ${carNumber}`;
+    } else if (vehicleType === 'bike') {
+      // Bike: driver name, car type (bike)
+      vehicle = carType;
+    } else if (vehicleType === 'shuttle') {
+      // Shuttle: car number only
+      vehicle = carNumber;
+    } else {
+      // Default if vehicle_type is undefined
+      vehicle = `${carType} • ${carNumber}`;
+    }
+    
+    return {
+      name: driverName,
+      phone: '+91 98765 43210',
+      rating: 4.8,
+      vehicle: vehicle,
+      photo: `https://ui-avatars.com/api/?name=John+Smith&size=200&background=random`,
+    };
+  };
+
+  const getArrivingTime = (ride) => {
+    const now = new Date();
+    const createdAt = new Date(ride.createdAt);
+    
+    // Calculate arriving time based on booking type
+    let arrivingTime;
+    if (ride.scheduled_time) {
+      // For scheduled rides: driver arrives at scheduled time (not 5 mins before)
+      arrivingTime = new Date(ride.scheduled_time);
+    } else {
+      // For "now" bookings: driver arrives 5 minutes after booking
+      arrivingTime = new Date(createdAt.getTime() + 5 * 60 * 1000);
+    }
+    
+    const diffMs = arrivingTime - now;
+    const diffMins = Math.ceil(diffMs / 60000);
+    
+    if (diffMins <= 0) {
+      return 'Driver Arrived';
+    } else if (diffMins === 1) {
+      return '1 min';
+    } else if (diffMins >= 60) {
+      const hours = Math.floor(diffMins / 60);
+      const mins = diffMins % 60;
+      return `${hours}h ${mins}m`;
+    } else {
+      return `${diffMins} mins`;
+    }
+  };
+
+  const checkIfDriverLate = (ride) => {
+    const now = new Date();
+    const createdAt = new Date(ride.createdAt);
+    
+    let arrivingTime;
+    if (ride.scheduled_time) {
+      arrivingTime = new Date(ride.scheduled_time);
+    } else {
+      arrivingTime = new Date(createdAt.getTime() + 5 * 60 * 1000);
+    }
+    
+    const diffMs = now - arrivingTime;
+    const diffMins = diffMs / 60000;
+    
+    // Driver is late if more than 2 minutes past arriving time
+    return diffMins >= 2;
+  };
+
+  const handleDriverLate = async (ride, action) => {
+    if (action === 'wait') {
+      Alert.alert('Notification Sent', 'We have notified the driver. Thank you for your patience.');
+    } else if (action === 'cancel') {
+      Alert.alert(
+        'Cancel Ride',
+        'You will receive 100% refund as the driver is late. Would you like to submit feedback?',
+        [
+          { text: 'Cancel Without Feedback', onPress: async () => {
+            try {
+              await rideAPI.cancelRide(ride._id, true); // true = driver_late
+              const userData = await authAPI.getMe();
+              updateUser(userData.user);
+              loadRides();
+              Alert.alert('Success', 'Ride cancelled. Full refund credited to your wallet.');
+            } catch (error) {
+              Alert.alert('Error', error.error || 'Failed to cancel ride');
+            }
+          }},
+          { text: 'Cancel & Give Feedback', onPress: async () => {
+            try {
+              await rideAPI.cancelRide(ride._id, true); // true = driver_late
+              const userData = await authAPI.getMe();
+              updateUser(userData.user);
+              setSelectedRide(ride);
+              setShowFeedbackModal(true);
+              loadRides();
+            } catch (error) {
+              Alert.alert('Error', error.error || 'Failed to cancel ride');
+            }
+          }},
+        ]
+      );
+    }
+  };
 
   const getStatusColor = (status) => {
     const colors = {
@@ -140,17 +254,29 @@ function RidesScreen() {
   };
 
   const handlePickupConfirmed = async () => {
-    setShowPickupModal(false);
+    if (!selectedRide) return;
     
-    // Simulate ride in progress
-    setTimeout(() => {
+    try {
+      setShowPickupModal(false);
+      
+      // Call API to start trip
+      await rideAPI.startTrip(selectedRide._id);
       Alert.alert('Ride Started', 'Your ride is now in progress. Enjoy your journey!');
-    }, 500);
-    
-    // Simulate ride completion after 3 seconds (for demo)
-    setTimeout(() => {
-      setShowFeedbackModal(true);
-    }, 3000);
+      
+      // Simulate ride completion after 5 seconds (for demo)
+      setTimeout(async () => {
+        try {
+          await rideAPI.completeTrip(selectedRide._id);
+          loadRides(); // Refresh to get updated status
+          setShowFeedbackModal(true);
+        } catch (error) {
+          console.error('Complete trip error:', error);
+        }
+      }, 5000);
+      
+    } catch (error) {
+      Alert.alert('Error', error.error || 'Failed to start trip');
+    }
   };
 
   const submitFeedback = async () => {
@@ -169,6 +295,29 @@ function RidesScreen() {
     } catch (error) {
       Alert.alert('Error', error.error || 'Failed to submit feedback');
     }
+  };
+
+  const clearHistory = () => {
+    Alert.alert(
+      'Clear History',
+      'Are you sure you want to delete all completed and cancelled rides? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await rideAPI.clearHistory();
+              loadRides();
+              Alert.alert('Success', `${response.deletedCount} ride(s) cleared from history.`);
+            } catch (error) {
+              Alert.alert('Error', error.error || 'Failed to clear history');
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -209,7 +358,7 @@ function RidesScreen() {
               </View>
             ) : (
               activeRides.map((ride) => {
-                const driver = getDummyDriver();
+                const driver = getDummyDriver(ride.vehicle_type);
                 return (
                   <View key={ride._id} style={styles.rideCard}>
                     {/* Status Badge */}
@@ -228,6 +377,12 @@ function RidesScreen() {
                             <Text style={styles.rating}>{driver.rating}</Text>
                           </View>
                           <Text style={styles.vehicleInfo}>{driver.vehicle}</Text>
+                          {ride.status === 'assigned' && (
+                            <View style={styles.arrivingTimeContainer}>
+                              <Ionicons name="time-outline" size={14} color="#4CAF50" />
+                              <Text style={styles.arrivingTime}>Arriving in {getArrivingTime(ride)}</Text>
+                            </View>
+                          )}
                         </View>
                         <TouchableOpacity style={styles.callButton}>
                           <Ionicons name="call" size={24} color="#4CAF50" />
@@ -270,9 +425,30 @@ function RidesScreen() {
                       </View>
                     </View>
 
+                    {/* Driver Late Buttons - Show if driver is late */}
+                    {ride.status === 'assigned' && checkIfDriverLate(ride) && (
+                      <View style={styles.driverLateContainer}>
+                        <Text style={styles.driverLateText}>⚠️ Driver is running late</Text>
+                        <View style={styles.driverLateButtons}>
+                          <TouchableOpacity 
+                            style={styles.waitButton}
+                            onPress={() => handleDriverLate(ride, 'wait')}
+                          >
+                            <Text style={styles.waitButtonText}>I'll Wait</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            style={styles.cancelLateButton}
+                            onPress={() => handleDriverLate(ride, 'cancel')}
+                          >
+                            <Text style={styles.cancelLateButtonText}>Cancel (100% Refund)</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+
                     {/* Action Buttons */}
                     <View style={styles.actionButtonsContainer}>
-                      {ride.status === 'assigned' && (
+                      {ride.status === 'assigned' && !checkIfDriverLate(ride) && (
                         <TouchableOpacity 
                           style={styles.confirmButton}
                           onPress={() => confirmPickup(ride)}
@@ -282,13 +458,16 @@ function RidesScreen() {
                         </TouchableOpacity>
                       )}
                       
-                      <TouchableOpacity 
-                        style={styles.cancelButton}
-                        onPress={() => cancelRide(ride)}
-                      >
-                        <Ionicons name="close-circle" size={18} color="#fff" />
-                        <Text style={styles.cancelButtonText}>Cancel Ride</Text>
-                      </TouchableOpacity>
+                      {/* Show cancel button for all active rides */}
+                      {!checkIfDriverLate(ride) && (
+                        <TouchableOpacity 
+                          style={styles.cancelButton}
+                          onPress={() => cancelRide(ride)}
+                        >
+                          <Ionicons name="close-circle" size={18} color="#fff" />
+                          <Text style={styles.cancelButtonText}>Cancel Ride</Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
                   </View>
                 );
@@ -306,34 +485,45 @@ function RidesScreen() {
                 <Text style={styles.emptySubtext}>Your completed rides will appear here</Text>
               </View>
             ) : (
-              rideHistory.map((ride) => (
-                <View key={ride._id} style={styles.historyCard}>
-                  {/* Date */}
-                  <Text style={styles.historyDate}>{formatDate(ride.createdAt)}</Text>
+              <>
+                {rideHistory.map((ride) => (
+                  <View key={ride._id} style={styles.historyCard}>
+                    {/* Date */}
+                    <Text style={styles.historyDate}>{formatDate(ride.createdAt)}</Text>
 
-                  {/* Route */}
-                  <View style={styles.historyRoute}>
-                    <View style={styles.routeRow}>
-                      <Ionicons name="ellipse" size={10} color="#4CAF50" />
-                      <Text style={styles.historyLocation}>{ride.pickup.address}</Text>
+                    {/* Route */}
+                    <View style={styles.historyRoute}>
+                      <View style={styles.routeRow}>
+                        <Ionicons name="ellipse" size={10} color="#4CAF50" />
+                        <Text style={styles.historyLocation}>{ride.pickup.address}</Text>
+                      </View>
+                      <View style={styles.routeRow}>
+                        <Ionicons name="location" size={10} color="#F44336" />
+                        <Text style={styles.historyLocation}>{ride.dropoff.address}</Text>
+                      </View>
                     </View>
-                    <View style={styles.routeRow}>
-                      <Ionicons name="location" size={10} color="#F44336" />
-                      <Text style={styles.historyLocation}>{ride.dropoff.address}</Text>
-                    </View>
-                  </View>
 
-                  {/* Details Row */}
-                  <View style={styles.historyDetailsRow}>
-                    <View style={[styles.historyStatus, { backgroundColor: getStatusColor(ride.status) + '20' }]}>
-                      <Text style={[styles.historyStatusText, { color: getStatusColor(ride.status) }]}>
-                        {getStatusText(ride.status)}
+                    {/* Details Row */}
+                    <View style={styles.historyDetailsRow}>
+                      <View style={[styles.historyStatus, { backgroundColor: getStatusColor(ride.status) + '20' }]}>
+                        <Text style={[styles.historyStatusText, { color: getStatusColor(ride.status) }]}>
+                          {getStatusText(ride.status)}
                       </Text>
                     </View>
                     <Text style={styles.historyFare}>₹{ride.fare_estimated || ride.fare_final}</Text>
                   </View>
                 </View>
-              ))
+              ))}
+              
+              {/* Clear History Button */}
+              <TouchableOpacity 
+                style={styles.clearHistoryButton}
+                onPress={clearHistory}
+              >
+                <Ionicons name="trash-outline" size={18} color="#F44336" />
+                <Text style={styles.clearHistoryText}>Clear History</Text>
+              </TouchableOpacity>
+            </>
             )}
           </>
         )}
@@ -385,9 +575,18 @@ function RidesScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.feedbackModal}>
-            <Ionicons name="checkmark-circle" size={60} color="#4CAF50" style={{ marginBottom: 16 }} />
-            <Text style={styles.modalTitle}>Trip Completed!</Text>
-            <Text style={styles.modalSubtext}>Rate your experience</Text>
+            <Ionicons 
+              name={selectedRide?.status === 'cancelled' ? 'alert-circle' : 'checkmark-circle'} 
+              size={60} 
+              color={selectedRide?.status === 'cancelled' ? '#FF9800' : '#4CAF50'} 
+              style={{ marginBottom: 16 }} 
+            />
+            <Text style={styles.modalTitle}>
+              {selectedRide?.status === 'cancelled' ? 'Submit Complaint' : 'Trip Completed!'}
+            </Text>
+            <Text style={styles.modalSubtext}>
+              {selectedRide?.status === 'cancelled' ? 'Rate your experience and tell us what went wrong' : 'Rate your experience'}
+            </Text>
             
             {/* Star Rating */}
             <View style={styles.starsContainer}>
@@ -553,6 +752,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#666',
   },
+  arrivingTimeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  arrivingTime: {
+    fontSize: 12,
+    color: '#4CAF50',
+    fontWeight: '600',
+    marginLeft: 4,
+  },
   callButton: {
     width: 44,
     height: 44,
@@ -640,6 +850,66 @@ const styles = StyleSheet.create({
   historyFare: {
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  clearHistoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    marginTop: 10,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#F44336',
+  },
+  clearHistoryText: {
+    color: '#F44336',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  driverLateContainer: {
+    marginTop: 15,
+    padding: 12,
+    backgroundColor: '#FFF3CD',
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF9800',
+  },
+  driverLateText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#856404',
+    marginBottom: 10,
+  },
+  driverLateButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  waitButton: {
+    flex: 1,
+    paddingVertical: 10,
+    backgroundColor: '#4CAF50',
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  waitButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  cancelLateButton: {
+    flex: 1,
+    paddingVertical: 10,
+    backgroundColor: '#F44336',
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  cancelLateButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
   },
   actionButtonsContainer: {
     flexDirection: 'row',

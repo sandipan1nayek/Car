@@ -67,11 +67,15 @@ export const rideAPI = {
       dropoffLng: dropoff.lng 
     } 
   }),
-  createRide: (pickup, dropoff) => api.post('/rides/create', { pickup, dropoff }),
-  cancelRide: (id) => api.post(`/rides/${id}/cancel`),
+  createRide: (pickup, dropoff, vehicle_type, scheduled_time) => 
+    api.post('/rides/create', { pickup, dropoff, vehicle_type, scheduled_time }),
+  cancelRide: (id, driver_late = false) => api.post(`/rides/${id}/cancel`, { driver_late }),
+  startTrip: (id) => api.post(`/rides/${id}/start`),
+  completeTrip: (id) => api.post(`/rides/${id}/complete`),
   getRide: (id) => api.get(`/rides/${id}`),
   rateRide: (id, rating, comment) => api.post(`/rides/${id}/rate`, { rating, comment }),
   getHistory: () => api.get('/rides/history'),
+  clearHistory: () => api.delete('/rides/history/clear'),
 };
 
 // Driver APIs

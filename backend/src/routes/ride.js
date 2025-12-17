@@ -6,8 +6,11 @@ const {
   getFareEstimate,
   cancelRide,
   getRide,
+  startTrip,
+  completeTrip,
   rateRide,
-  getRideHistory
+  getRideHistory,
+  clearHistory
 } = require('../controllers/rideController');
 
 // Create ride request
@@ -19,8 +22,17 @@ router.get('/fare-estimate', auth, getFareEstimate);
 // Get ride history (must be before /:id route)
 router.get('/history', auth, getRideHistory);
 
+// Clear ride history
+router.delete('/history/clear', auth, clearHistory);
+
 // Cancel ride
 router.post('/:id/cancel', auth, cancelRide);
+
+// Start trip (pickup confirmed)
+router.post('/:id/start', auth, startTrip);
+
+// Complete trip
+router.post('/:id/complete', auth, completeTrip);
 
 // Get ride details
 router.get('/:id', auth, getRide);

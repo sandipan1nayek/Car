@@ -10,7 +10,7 @@ const { sendEmail, emailTemplates } = require('../services/emailService');
 // @access  Private
 exports.createRide = async (req, res) => {
   try {
-    const { pickup, dropoff } = req.body;
+    const { pickup, dropoff, vehicle_type, scheduled_time } = req.body;
     
     // Validation
     if (!pickup || !pickup.lat || !pickup.lng || !pickup.address) {
@@ -51,6 +51,8 @@ exports.createRide = async (req, res) => {
       distance_km: directions.distance_km,
       estimated_duration_min: directions.duration_min,
       fare_estimated: fare,
+      vehicle_type: vehicle_type || 'car',
+      scheduled_time: scheduled_time || null,
       status: 'assigned'  // Auto-assign for demo
     });
     
@@ -169,10 +171,22 @@ exports.cancelRide = async (req, res) => {
       return res.status(400).json({ error: 'Cannot cancel completed ride' });
     }
 
-    // Calculate penalty (40%) and refund (60%)
+    // Check if driver is late (from request body)
+    const { driver_late } = req.body;
     const fareAmount = ride.fare_estimated || ride.fare_final;
-    const penalty = Math.round(fareAmount * 0.4);
-    const refund = fareAmount - penalty;
+    
+    let penalty, refund, description;
+    if (driver_late) {
+      // Driver is late: 100% refund, no penalty
+      penalty = 0;
+      refund = fareAmount;
+      description = `Full refund for ride #${ride._id.toString().slice(-6)} - Driver was late`;
+    } else {
+      // Customer cancellation: 40% penalty, 60% refund
+      penalty = Math.round(fareAmount * 0.4);
+      refund = fareAmount - penalty;
+      description = `Cancellation refund for ride #${ride._id.toString().slice(-6)} (60% of ₹${fareAmount}). 40% penalty: ₹${penalty}`;
+    }
 
     // Get customer and refund to wallet
     const customer = await User.findById(ride.customer);
@@ -181,7 +195,7 @@ exports.cancelRide = async (req, res) => {
     const balanceAfter = customer.wallet_balance;
     await customer.save();
 
-    // Create refund transaction (60% refund)
+    // Create refund transaction
     const Transaction = require('../models/Transaction');
     await Transaction.create({
       user: ride.customer,
@@ -190,7 +204,7 @@ exports.cancelRide = async (req, res) => {
       balance_before: balanceBefore,
       balance_after: balanceAfter,
       status: 'completed',
-      description: `Cancellation refund for ride #${ride._id.toString().slice(-6)} (60% of ₹${fareAmount}). 40% penalty: ₹${penalty}`,
+      description: description,
       ride: ride._id,
     });
     
@@ -250,6 +264,72 @@ exports.getRide = async (req, res) => {
   }
 };
 
+// @route   POST /api/rides/:id/start
+// @desc    Start trip (pickup confirmed)
+// @access  Private
+exports.startTrip = async (req, res) => {
+  try {
+    const ride = await Ride.findById(req.params.id);
+    
+    if (!ride) {
+      return res.status(404).json({ error: 'Ride not found' });
+    }
+    
+    // Check if user owns this ride
+    if (ride.customer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+    
+    if (ride.status !== 'assigned') {
+      return res.status(400).json({ error: 'Cannot start trip. Ride status must be assigned.' });
+    }
+    
+    ride.status = 'en_route';
+    ride.pickup_time = new Date();
+    await ride.save();
+    
+    res.json({ message: 'Trip started successfully', ride });
+  } catch (error) {
+    console.error('Start trip error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// @route   POST /api/rides/:id/complete
+// @desc    Complete trip
+// @access  Private
+exports.completeTrip = async (req, res) => {
+  try {
+    const ride = await Ride.findById(req.params.id);
+    
+    if (!ride) {
+      return res.status(404).json({ error: 'Ride not found' });
+    }
+    
+    // Check if user owns this ride (customer or driver can complete)
+    const isCustomer = ride.customer.toString() === req.user._id.toString();
+    const isDriver = ride.driver && ride.driver.toString() === req.user._id.toString();
+    
+    if (!isCustomer && !isDriver) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+    
+    if (ride.status !== 'en_route') {
+      return res.status(400).json({ error: 'Cannot complete trip. Ride must be in progress.' });
+    }
+    
+    ride.status = 'completed';
+    ride.completed_at = new Date();
+    ride.fare_final = ride.fare_estimated;
+    await ride.save();
+    
+    res.json({ message: 'Trip completed successfully', ride });
+  } catch (error) {
+    console.error('Complete trip error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 // @route   POST /api/rides/:id/rate
 // @desc    Rate ride after completion
 // @access  Private
@@ -267,8 +347,9 @@ exports.rateRide = async (req, res) => {
       return res.status(404).json({ error: 'Ride not found' });
     }
     
-    if (ride.status !== 'completed') {
-      return res.status(400).json({ error: 'Can only rate completed rides' });
+    // Allow rating for both completed and cancelled rides (cancelled = feedback/complaint)
+    if (ride.status !== 'completed' && ride.status !== 'cancelled') {
+      return res.status(400).json({ error: 'Can only rate completed or cancelled rides' });
     }
     
     const isCustomer = ride.customer.toString() === req.user._id.toString();
@@ -287,17 +368,21 @@ exports.rateRide = async (req, res) => {
       ride.customer_rating = { rating, comment: comment || '' };
       await ride.save();
       
-      // Update driver's average rating
-      const driver = await User.findById(ride.driver);
-      const allRides = await Ride.find({
-        driver: ride.driver,
-        status: 'completed',
-        'customer_rating.rating': { $exists: true }
-      });
-      
-      const avgRating = allRides.reduce((sum, r) => sum + r.customer_rating.rating, 0) / allRides.length;
-      driver.driver_rating = Math.round(avgRating * 10) / 10;
-      await driver.save();
+      // Update driver's average rating (only if real driver exists)
+      if (ride.driver) {
+        const driver = await User.findById(ride.driver);
+        if (driver) {
+          const allRides = await Ride.find({
+            driver: ride.driver,
+            status: 'completed',
+            'customer_rating.rating': { $exists: true }
+          });
+          
+          const avgRating = allRides.reduce((sum, r) => sum + r.customer_rating.rating, 0) / allRides.length;
+          driver.driver_rating = Math.round(avgRating * 10) / 10;
+          await driver.save();
+        }
+      }
     }
     
     // Driver rating customer
@@ -330,6 +415,26 @@ exports.getRideHistory = async (req, res) => {
     res.json({ rides });
   } catch (error) {
     console.error('Get ride history error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// @route   DELETE /api/rides/history/clear
+// @desc    Clear user's completed/cancelled ride history
+// @access  Private
+exports.clearHistory = async (req, res) => {
+  try {
+    const result = await Ride.deleteMany({ 
+      customer: req.user._id,
+      status: { $in: ['completed', 'cancelled'] }
+    });
+    
+    res.json({ 
+      message: 'History cleared successfully',
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    console.error('Clear history error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 };
