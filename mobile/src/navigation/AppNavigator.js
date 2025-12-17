@@ -15,6 +15,8 @@ import RidesScreen from '../screens/customer/RidesScreen';
 import WalletScreen from '../screens/customer/WalletScreen';
 import ProfileScreen from '../screens/customer/ProfileScreen';
 import ChatScreen from '../screens/customer/ChatScreen';
+import ManagerDashboardScreen from '../screens/customer/ManagerDashboardScreen';
+import AdminDashboardScreen from '../screens/customer/AdminDashboardScreen';
 
 // Driver Screens
 import DriverDashboardScreen from '../screens/driver/DriverDashboardScreen';
@@ -120,6 +122,25 @@ function CustomerTabs() {
   );
 }
 
+// Main App Stack (includes tabs and modal screens)
+function MainAppStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MainTabs" component={CustomerTabs} />
+      <Stack.Screen 
+        name="ManagerDashboard" 
+        component={ManagerDashboardScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="AdminDashboard" 
+        component={AdminDashboardScreen}
+        options={{ headerShown: false }}
+      />
+    </Stack.Navigator>
+  );
+}
+
 // Main App Navigator
 export default function AppNavigator() {
   const { user, loading } = useAuth();
@@ -130,7 +151,7 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer>
-      {user ? <CustomerTabs /> : <AuthStack />}
+      {user ? <MainAppStack /> : <AuthStack />}
     </NavigationContainer>
   );
 }

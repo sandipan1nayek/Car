@@ -7,9 +7,10 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }) {
   const { user, logout, isDriver } = useAuth();
 
   const handleLogout = () => {
@@ -83,6 +84,30 @@ export default function ProfileScreen() {
           </View>
         )}
       </View>
+
+      {/* Manager Dashboard Entry */}
+      {user?.is_manager && (
+        <TouchableOpacity 
+          style={styles.dashboardButton}
+          onPress={() => navigation.navigate('ManagerDashboard')}
+        >
+          <Ionicons name="shield-checkmark" size={24} color="#fff" />
+          <Text style={styles.dashboardButtonText}>Open Manager Dashboard</Text>
+          <Ionicons name="chevron-forward" size={24} color="#fff" />
+        </TouchableOpacity>
+      )}
+
+      {/* Admin Dashboard Entry */}
+      {user?.is_admin && (
+        <TouchableOpacity 
+          style={styles.adminButton}
+          onPress={() => navigation.navigate('AdminDashboard')}
+        >
+          <Ionicons name="settings" size={24} color="#fff" />
+          <Text style={styles.dashboardButtonText}>Open Admin Dashboard</Text>
+          <Ionicons name="chevron-forward" size={24} color="#fff" />
+        </TouchableOpacity>
+      )}
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutText}>Logout</Text>
@@ -164,6 +189,33 @@ const styles = StyleSheet.create({
   roleActive: {
     fontSize: 20,
     color: 'green',
+  },
+  dashboardButton: {
+    backgroundColor: '#4CAF50',
+    marginTop: 15,
+    padding: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 8,
+    marginHorizontal: 15,
+  },
+  adminButton: {
+    backgroundColor: '#FF9800',
+    marginTop: 15,
+    padding: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 8,
+    marginHorizontal: 15,
+  },
+  dashboardButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+    marginLeft: 10,
   },
   logoutButton: {
     backgroundColor: '#fff',

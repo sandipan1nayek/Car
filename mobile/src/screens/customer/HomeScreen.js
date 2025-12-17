@@ -361,12 +361,13 @@ export default function HomeScreen() {
                     <Text style={[styles.vehicleSeats, isDisabled && styles.vehicleTextDisabled]}>
                       {vehicle.seats} seats {vehicle.desc && `• ${vehicle.desc}`}
                     </Text>
-                </View>
-                <Text style={[styles.vehiclePrice, isDisabled && styles.vehicleTextDisabled]}>
-                  ₹{Math.round(fare.fare * vehicle.price)}
-                </Text>
-              </TouchableOpacity>
-            )})}
+                  </View>
+                  <Text style={[styles.vehiclePrice, isDisabled && styles.vehicleTextDisabled]}>
+                    ₹{Math.round(fare.fare * vehicle.price)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
             <TouchableOpacity
               style={[styles.bookButton, !vehicleType && styles.bookButtonDisabled]}
               onPress={() => vehicleType && setStep('confirm')}
