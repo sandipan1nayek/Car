@@ -104,6 +104,7 @@ export const chatAPI = {
 // Admin APIs
 export const adminAPI = {
   getPendingDrivers: () => api.get('/admin/drivers/pending'),
+  getApprovedDrivers: () => api.get('/admin/drivers/approved'),
   approveDriver: (userId) => api.post(`/admin/drivers/${userId}/approve`),
   rejectDriver: (userId) => api.post(`/admin/drivers/${userId}/reject`),
 };

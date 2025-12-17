@@ -20,6 +20,23 @@ exports.getPendingDrivers = async (req, res) => {
   }
 };
 
+// @route   GET /api/admin/drivers/approved
+// @desc    Get all approved drivers
+// @access  Private (Admin only)
+exports.getApprovedDrivers = async (req, res) => {
+  try {
+    const approvedDrivers = await User.find({ 
+      is_driver: true,
+      driver_application_status: 'approved'
+    }).select('name email phone vehicle_info driver_documents driver_status is_dummy total_rides_completed wallet_balance driver_rating createdAt');
+
+    res.json({ drivers: approvedDrivers });
+  } catch (error) {
+    console.error('Get approved drivers error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 // @route   POST /api/admin/drivers/:userId/approve
 // @desc    Approve driver application
 // @access  Private (Admin only)

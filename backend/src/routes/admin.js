@@ -13,7 +13,8 @@ const {
   createManager,
   removeManager,
   getAnalytics,
-  getPendingDrivers
+  getPendingDrivers,
+  getApprovedDrivers
 } = require('../controllers/adminController');
 
 // Get dashboard stats
@@ -51,6 +52,7 @@ router.get('/analytics', auth, requireAdmin, getAnalytics);
 
 // New driver approval routes
 router.get('/drivers/pending', auth, requireAdmin, getPendingDrivers);
+router.get('/drivers/approved', auth, requireAdmin, getApprovedDrivers);
 router.post('/drivers/:userId/approve', auth, requireAdmin, async (req, res) => {
   try {
     const User = require('../models/User');
