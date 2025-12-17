@@ -124,6 +124,7 @@ exports.addMoney = async (req, res) => {
     
     res.json({
       message: 'Money added successfully',
+      newBalance: newBalance,
       balance: newBalance,
       amount: amount
     });

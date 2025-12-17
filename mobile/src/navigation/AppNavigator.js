@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 
 // Auth Screens
@@ -46,6 +47,9 @@ function CustomerTabs() {
         options={{
           tabBarLabel: 'Home',
           headerTitle: 'Book a Ride',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size} color={color} />
+          ),
         }}
       />
       
@@ -56,6 +60,9 @@ function CustomerTabs() {
           options={{
             tabBarLabel: 'Driver',
             headerTitle: 'Driver Dashboard',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="car" size={size} color={color} />
+            ),
           }}
         />
       )}
@@ -66,6 +73,9 @@ function CustomerTabs() {
         options={{
           tabBarLabel: 'Wallet',
           headerTitle: 'My Wallet',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="wallet" size={size} color={color} />
+          ),
         }}
       />
       
@@ -75,6 +85,9 @@ function CustomerTabs() {
         options={{
           tabBarLabel: 'Profile',
           headerTitle: 'My Profile',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person" size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>

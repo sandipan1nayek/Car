@@ -10,11 +10,11 @@ import {
   ScrollView,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
-import { rideAPI } from '../../services/api';
+import { rideAPI, authAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
 export default function HomeScreen() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [region, setRegion] = useState({
     latitude: 40.7128,
     longitude: -74.006,
@@ -80,7 +80,12 @@ export default function HomeScreen() {
     setLoading(true);
     try {
       const result = await rideAPI.createRide(pickup, dropoff);
-      Alert.alert('Success', 'Ride booked! Finding nearby drivers...', [
+      
+      // Fetch updated user data to refresh wallet balance
+      const userData = await authAPI.getMe();
+      updateUser(userData.user);
+      
+      Alert.alert('Success', 'Ride booked! Payment deducted from wallet.', [
         { text: 'OK', onPress: reset },
       ]);
     } catch (error) {
@@ -138,7 +143,7 @@ export default function HomeScreen() {
         )}
 
         {step === 'confirm' && fare && (
-          <View>
+          <ScrollView style={{ maxHeight: 400 }}>
             <View style={styles.detailRow}>
               <Text style={styles.label}>From:</Text>
               <Text style={styles.value}>{pickup.address}</Text>
@@ -149,11 +154,11 @@ export default function HomeScreen() {
             </View>
             <View style={styles.detailRow}>
               <Text style={styles.label}>Distance:</Text>
-              <Text style={styles.value}>{fare.distance} km</Text>
+              <Text style={styles.value}>{fare.distance_km} km</Text>
             </View>
             <View style={styles.detailRow}>
               <Text style={styles.label}>Duration:</Text>
-              <Text style={styles.value}>{fare.duration} min</Text>
+              <Text style={styles.value}>{fare.duration_min} min</Text>
             </View>
             <View style={styles.fareRow}>
               <Text style={styles.fareLabel}>Total Fare:</Text>
@@ -175,7 +180,7 @@ export default function HomeScreen() {
             <TouchableOpacity style={styles.cancelButton} onPress={reset}>
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
-          </View>
+          </ScrollView>
         )}
       </View>
     </View>

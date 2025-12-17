@@ -38,6 +38,11 @@ exports.createRide = async (req, res) => {
       });
     }
     
+    // Deduct fare from wallet immediately (for demo)
+    const oldBalance = user.wallet_balance;
+    user.wallet_balance -= fare;
+    await user.save();
+    
     // Create ride
     const ride = await Ride.create({
       customer: req.user._id,
@@ -47,6 +52,18 @@ exports.createRide = async (req, res) => {
       estimated_duration_min: directions.duration_min,
       fare_estimated: fare,
       status: 'requested'
+    });
+    
+    // Create transaction record
+    await Transaction.create({
+      user: user._id,
+      type: 'ride_payment',
+      amount: -fare,
+      balance_before: oldBalance,
+      balance_after: user.wallet_balance,
+      ride: ride._id,
+      description: `Payment for ride from ${pickup.address} to ${dropoff.address}`,
+      status: 'completed'
     });
     
     // Find nearby online drivers
