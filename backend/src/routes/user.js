@@ -1,30 +1,31 @@
 const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
+const {
+  getProfile,
+  updateProfile,
+  uploadProfilePicture,
+  getWallet,
+  addMoney,
+  getTransactions
+} = require('../controllers/userController');
 
 // Get user profile
-router.get('/profile', auth, async (req, res) => {
-  res.json({ user: req.user });
-});
+router.get('/profile', auth, getProfile);
 
 // Update profile
-router.put('/profile', auth, async (req, res) => {
-  res.json({ message: 'Profile update endpoint - to be implemented' });
-});
+router.put('/profile', auth, updateProfile);
+
+// Upload profile picture
+router.post('/profile/picture', auth, uploadProfilePicture);
 
 // Get wallet balance
-router.get('/wallet', auth, async (req, res) => {
-  res.json({ balance: req.user.wallet_balance });
-});
+router.get('/wallet', auth, getWallet);
 
 // Add money to wallet
-router.post('/wallet/add', auth, async (req, res) => {
-  res.json({ message: 'Wallet add money endpoint - to be implemented' });
-});
+router.post('/wallet/add', auth, addMoney);
 
 // Get transaction history
-router.get('/transactions', auth, async (req, res) => {
-  res.json({ message: 'Transactions endpoint - to be implemented' });
-});
+router.get('/transactions', auth, getTransactions);
 
 module.exports = router;

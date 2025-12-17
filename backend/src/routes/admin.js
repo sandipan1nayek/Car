@@ -1,40 +1,51 @@
 const express = require('express');
 const router = express.Router();
 const { auth, requireAdmin } = require('../middleware/auth');
+const {
+  getDashboard,
+  getDriverApplications,
+  getApplicationDetails,
+  approveDriver,
+  rejectDriver,
+  getUsers,
+  suspendUser,
+  unsuspendUser,
+  createManager,
+  removeManager,
+  getAnalytics
+} = require('../controllers/adminController');
 
 // Get dashboard stats
-router.get('/dashboard', auth, requireAdmin, async (req, res) => {
-  res.json({ message: 'Admin dashboard endpoint - to be implemented' });
-});
+router.get('/dashboard', auth, requireAdmin, getDashboard);
 
 // Get driver applications
-router.get('/driver-applications', auth, requireAdmin, async (req, res) => {
-  res.json({ message: 'Get applications endpoint - to be implemented' });
-});
+router.get('/applications', auth, requireAdmin, getDriverApplications);
+
+// Get application details
+router.get('/applications/:id', auth, requireAdmin, getApplicationDetails);
 
 // Approve driver
-router.post('/driver-applications/:id/approve', auth, requireAdmin, async (req, res) => {
-  res.json({ message: 'Approve driver endpoint - to be implemented' });
-});
+router.post('/applications/:id/approve', auth, requireAdmin, approveDriver);
 
 // Reject driver
-router.post('/driver-applications/:id/reject', auth, requireAdmin, async (req, res) => {
-  res.json({ message: 'Reject driver endpoint - to be implemented' });
-});
+router.post('/applications/:id/reject', auth, requireAdmin, rejectDriver);
 
 // Get all users
-router.get('/users', auth, requireAdmin, async (req, res) => {
-  res.json({ message: 'Get users endpoint - to be implemented' });
-});
+router.get('/users', auth, requireAdmin, getUsers);
 
 // Suspend user
-router.post('/users/:id/suspend', auth, requireAdmin, async (req, res) => {
-  res.json({ message: 'Suspend user endpoint - to be implemented' });
-});
+router.post('/users/:id/suspend', auth, requireAdmin, suspendUser);
+
+// Unsuspend user
+router.post('/users/:id/unsuspend', auth, requireAdmin, unsuspendUser);
 
 // Create manager
-router.post('/managers/create', auth, requireAdmin, async (req, res) => {
-  res.json({ message: 'Create manager endpoint - to be implemented' });
-});
+router.post('/managers/create', auth, requireAdmin, createManager);
+
+// Remove manager
+router.delete('/managers/:id', auth, requireAdmin, removeManager);
+
+// Get analytics
+router.get('/analytics', auth, requireAdmin, getAnalytics);
 
 module.exports = router;
