@@ -68,26 +68,16 @@ exports.createRide = async (req, res) => {
       status: 'completed'
     });
     
-    // Find nearby online drivers (NOT on_ride status, NOT already assigned)
-    const nearbyDrivers = await DriverLocation.find({
-      is_online: true,
-      location: {
-        $near: {
-          $geometry: {
-            type: 'Point',
-            coordinates: [pickup.lng, pickup.lat]
-          },
-          $maxDistance: 5000 // 5km radius
-        }
-      }
-    }).populate('driver');
+    // Find all drivers (both online real drivers and dummy drivers)
+    // Ignore vehicle_type - any driver can accept any vehicle type request
+    const allDrivers = await User.find({
+      is_driver: true,
+      driver_status: { $ne: 'on_ride' }
+    });
     
-    // Filter drivers who are NOT on a ride and NOT already assigned
+    // Filter drivers who are NOT on an active ride
     const availableDrivers = [];
-    for (const driverLoc of nearbyDrivers) {
-      const driver = driverLoc.driver;
-      if (!driver || driver.driver_status === 'on_ride') continue;
-      
+    for (const driver of allDrivers) {
       // Check if driver has any active rides
       const activeRide = await Ride.findOne({
         driver: driver._id,
@@ -95,41 +85,45 @@ exports.createRide = async (req, res) => {
       });
       
       if (!activeRide) {
-        availableDrivers.push({ driver, location: driverLoc });
+        availableDrivers.push(driver);
       }
     }
     
-    // Prioritize real drivers over dummy drivers
+    // Prioritize real drivers over dummy drivers, then rotate
     availableDrivers.sort((a, b) => {
-      if (a.driver.is_dummy === b.driver.is_dummy) return 0;
-      return a.driver.is_dummy ? 1 : -1; // Real drivers (is_dummy=false) come first
+      if (a.is_dummy === b.is_dummy) {
+        // Same type (both real or both dummy) - sort by last ride to distribute evenly
+        return (a.total_rides_completed || 0) - (b.total_rides_completed || 0);
+      }
+      return a.is_dummy ? 1 : -1; // Real drivers first
     });
     
-    // Send ride request to nearest available driver via Socket.io
-    if (availableDrivers.length > 0 && global.io) {
-      const nearestDriver = availableDrivers[0].driver;
-      global.io.emit(`driver_${nearestDriver._id}_ride_request`, {
-        rideId: ride._id,
-        customer: {
-          name: user.name,
-          phone: user.phone,
-          profilePicture: user.profilePicture
-        },
-        pickup,
-        dropoff,
-        distance: directions.distance_km,
-        fare,
-        estimatedDuration: directions.duration_min
+    // Auto-assign driver immediately
+    if (availableDrivers.length > 0) {
+      const selectedDriver = availableDrivers[0];
+      
+      // Assign driver to ride
+      ride.driver = selectedDriver._id;
+      ride.status = 'assigned';
+      ride.accepted_at = new Date();
+      await ride.save();
+      
+      // Update driver status to on_ride
+      await User.findByIdAndUpdate(selectedDriver._id, {
+        driver_status: 'on_ride'
       });
+      
+      console.log(`🚗 Auto-assigned driver: ${selectedDriver.name} ${selectedDriver.is_dummy ? '[DUMMY]' : '[REAL]'}`);
     }
     
     const populatedRide = await Ride.findById(ride._id)
-      .populate('customer', 'name phone profilePicture');
+      .populate('customer', 'name phone profilePicture')
+      .populate('driver', 'name phone profilePicture vehicle_info driver_rating');
     
     res.status(201).json({
       message: 'Ride requested successfully',
       ride: populatedRide,
-      nearbyDriversCount: nearbyDrivers.length
+      availableDriversCount: availableDrivers.length
     });
   } catch (error) {
     console.error('Create ride error:', error);

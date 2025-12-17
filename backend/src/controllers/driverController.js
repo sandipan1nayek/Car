@@ -350,12 +350,12 @@ exports.completeTrip = async (req, res) => {
       status: 'completed'
     });
     
-    // Add to driver wallet and set driver back to online
+    // Add to driver wallet and reset status
     const driver = await User.findById(req.user._id);
     const driverOldBalance = driver.wallet_balance;
     driver.wallet_balance += driverEarning;
     driver.total_rides_completed += 1;
-    driver.driver_status = 'online'; // Set driver back to online after completing ride
+    driver.driver_status = driver.is_dummy ? 'offline' : 'online'; // Dummy goes offline, real stays online
     await driver.save();
     
     await Transaction.create({
