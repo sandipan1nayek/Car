@@ -7,16 +7,26 @@ import {
   TouchableOpacity,
   RefreshControl,
   Image,
+  Alert,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { rideAPI } from '../../services/api';
+import { rideAPI, authAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
-export default function RidesScreen() {
+function RidesScreen() {
+  const { updateUser } = useAuth();
   const [activeRides, setActiveRides] = useState([]);
   const [rideHistory, setRideHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('active'); // active, history
+  const [showPickupModal, setShowPickupModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [selectedRide, setSelectedRide] = useState(null);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
 
   useFocusEffect(
     React.useCallback(() => {
@@ -93,6 +103,71 @@ export default function RidesScreen() {
     } else {
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' + 
              date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    }
+  };
+
+  const cancelRide = (ride) => {
+    const penalty = Math.round(ride.fare_estimated * 0.4);
+    const refund = ride.fare_estimated - penalty;
+    
+    Alert.alert(
+      'Cancel Ride',
+      `Cancellation fee: ₹${penalty} (40%)\nRefund amount: ₹${refund}\n\nAre you sure you want to cancel?`,
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await rideAPI.cancelRide(ride._id);
+              const userData = await authAPI.getMe();
+              updateUser(userData.user);
+              loadRides();
+              Alert.alert('Success', `Ride cancelled. ₹${refund} refunded to wallet.`);
+            } catch (error) {
+              Alert.alert('Error', error.error || 'Failed to cancel ride');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const confirmPickup = (ride) => {
+    setSelectedRide(ride);
+    setShowPickupModal(true);
+  };
+
+  const handlePickupConfirmed = async () => {
+    setShowPickupModal(false);
+    
+    // Simulate ride in progress
+    setTimeout(() => {
+      Alert.alert('Ride Started', 'Your ride is now in progress. Enjoy your journey!');
+    }, 500);
+    
+    // Simulate ride completion after 3 seconds (for demo)
+    setTimeout(() => {
+      setShowFeedbackModal(true);
+    }, 3000);
+  };
+
+  const submitFeedback = async () => {
+    if (!selectedRide) return;
+    
+    try {
+      await rideAPI.rateRide(selectedRide._id, rating, comment);
+      const userData = await authAPI.getMe();
+      updateUser(userData.user);
+      setShowFeedbackModal(false);
+      setRating(5);
+      setComment('');
+      setSelectedRide(null);
+      loadRides();
+      Alert.alert('Thank You!', 'Your feedback has been submitted successfully.');
+    } catch (error) {
+      Alert.alert('Error', error.error || 'Failed to submit feedback');
     }
   };
 
@@ -194,6 +269,27 @@ export default function RidesScreen() {
                         <Text style={styles.detailText}>₹{ride.fare_estimated}</Text>
                       </View>
                     </View>
+
+                    {/* Action Buttons */}
+                    <View style={styles.actionButtonsContainer}>
+                      {ride.status === 'assigned' && (
+                        <TouchableOpacity 
+                          style={styles.confirmButton}
+                          onPress={() => confirmPickup(ride)}
+                        >
+                          <Ionicons name="checkmark-circle" size={18} color="#fff" />
+                          <Text style={styles.confirmButtonText}>Confirm Pickup</Text>
+                        </TouchableOpacity>
+                      )}
+                      
+                      <TouchableOpacity 
+                        style={styles.cancelButton}
+                        onPress={() => cancelRide(ride)}
+                      >
+                        <Ionicons name="close-circle" size={18} color="#fff" />
+                        <Text style={styles.cancelButtonText}>Cancel Ride</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 );
               })
@@ -242,6 +338,108 @@ export default function RidesScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Pickup Confirmation Modal */}
+      <Modal
+        visible={showPickupModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowPickupModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Ionicons name="car" size={50} color="#4CAF50" style={{ marginBottom: 16 }} />
+            <Text style={styles.modalTitle}>Confirm Pickup</Text>
+            {selectedRide && (
+              <View style={styles.modalInfoBox}>
+                <Ionicons name="location" size={20} color="#4CAF50" />
+                <Text style={styles.modalAddress}>{selectedRide.pickup.address}</Text>
+              </View>
+            )}
+            <Text style={styles.modalSubtext}>Have you been picked up by your driver?</Text>
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={styles.modalCancelBtn}
+                onPress={() => setShowPickupModal(false)}
+              >
+                <Text style={styles.modalCancelText}>Not Yet</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.modalConfirmBtn}
+                onPress={handlePickupConfirmed}
+              >
+                <Text style={styles.modalConfirmText}>Yes, Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Feedback Modal */}
+      <Modal
+        visible={showFeedbackModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowFeedbackModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.feedbackModal}>
+            <Ionicons name="checkmark-circle" size={60} color="#4CAF50" style={{ marginBottom: 16 }} />
+            <Text style={styles.modalTitle}>Trip Completed!</Text>
+            <Text style={styles.modalSubtext}>Rate your experience</Text>
+            
+            {/* Star Rating */}
+            <View style={styles.starsContainer}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity
+                  key={star}
+                  onPress={() => setRating(star)}
+                >
+                  <Ionicons
+                    name={star <= rating ? 'star' : 'star-outline'}
+                    size={40}
+                    color="#FFD700"
+                    style={{ marginHorizontal: 4 }}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Comment Input */}
+            <TextInput
+              style={styles.commentInput}
+              placeholder="Add a comment (optional)"
+              placeholderTextColor="#999"
+              multiline
+              numberOfLines={3}
+              value={comment}
+              onChangeText={setComment}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={styles.modalCancelBtn}
+                onPress={() => {
+                  setShowFeedbackModal(false);
+                  setRating(5);
+                  setComment('');
+                  setSelectedRide(null);
+                  loadRides();
+                }}
+              >
+                <Text style={styles.modalCancelText}>Skip</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.modalConfirmBtn}
+                onPress={submitFeedback}
+              >
+                <Text style={styles.modalConfirmText}>Submit</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -443,4 +641,133 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-});
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    marginTop: 15,
+  },
+  confirmButton: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 5,
+  },
+  confirmButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  cancelButton: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#F44336',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 5,
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    alignItems: 'center',
+  },
+  feedbackModal: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    alignItems: 'center',
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  modalSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    padding: 12,
+    borderRadius: 8,
+    width: '100%',
+    marginBottom: 16,
+  },
+  modalAddress: {
+    marginLeft: 10,
+    fontSize: 14,
+    flex: 1,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    width: '100%',
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    alignItems: 'center',
+    marginRight: 5,
+  },
+  modalCancelText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '600',
+  },
+  modalConfirmBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#4CAF50',
+    alignItems: 'center',
+    marginLeft: 5,
+  },
+  modalConfirmText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    marginVertical: 20,
+  },
+  commentInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+    textAlignVertical: 'top',
+    fontSize: 14,
+  },});
+
+export default RidesScreen;

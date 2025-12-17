@@ -51,7 +51,7 @@ exports.createRide = async (req, res) => {
       distance_km: directions.distance_km,
       estimated_duration_min: directions.duration_min,
       fare_estimated: fare,
-      status: 'requested'
+      status: 'assigned'  // Auto-assign for demo
     });
     
     // Create transaction record
@@ -168,11 +168,36 @@ exports.cancelRide = async (req, res) => {
     if (ride.status === 'completed') {
       return res.status(400).json({ error: 'Cannot cancel completed ride' });
     }
+
+    // Calculate penalty (40%) and refund (60%)
+    const fareAmount = ride.fare_estimated || ride.fare_final;
+    const penalty = Math.round(fareAmount * 0.4);
+    const refund = fareAmount - penalty;
+
+    // Get customer and refund to wallet
+    const customer = await User.findById(ride.customer);
+    const balanceBefore = customer.wallet_balance;
+    customer.wallet_balance += refund;
+    const balanceAfter = customer.wallet_balance;
+    await customer.save();
+
+    // Create refund transaction (60% refund)
+    const Transaction = require('../models/Transaction');
+    await Transaction.create({
+      user: ride.customer,
+      type: 'refund',
+      amount: refund,
+      balance_before: balanceBefore,
+      balance_after: balanceAfter,
+      status: 'completed',
+      description: `Cancellation refund for ride #${ride._id.toString().slice(-6)} (60% of ₹${fareAmount}). 40% penalty: ₹${penalty}`,
+      ride: ride._id,
+    });
     
     ride.status = 'cancelled';
     ride.cancelled_at = new Date();
     ride.cancelled_by = 'customer';
-    ride.cancellation_reason = req.body.reason || 'Cancelled by customer';
+    ride.cancellation_reason = (req.body && req.body.reason) || 'Cancelled by customer';
     await ride.save();
     
     // Notify driver if ride was assigned
@@ -183,7 +208,13 @@ exports.cancelRide = async (req, res) => {
       });
     }
     
-    res.json({ message: 'Ride cancelled successfully', ride });
+    res.json({ 
+      message: 'Ride cancelled successfully', 
+      ride,
+      penalty,
+      refund,
+      newBalance: customer.wallet_balance
+    });
   } catch (error) {
     console.error('Cancel ride error:', error);
     res.status(500).json({ error: 'Server error' });
