@@ -17,8 +17,8 @@ import { useAuth } from '../../context/AuthContext';
 export default function HomeScreen() {
   const { user, updateUser } = useAuth();
   const [region, setRegion] = useState({
-    latitude: 40.7128,
-    longitude: -74.006,
+    latitude: 22.5726,  // Kolkata center
+    longitude: 88.3639,
     latitudeDelta: 0.05,
     longitudeDelta: 0.05,
   });
@@ -29,21 +29,105 @@ export default function HomeScreen() {
   const [step, setStep] = useState('pickup'); // pickup, dropoff, vehicle, time, confirm
   const [vehicleType, setVehicleType] = useState(null);
   const [selectedTime, setSelectedTime] = useState('now');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  // Mock locations (same as backend)
+  // Popular locations in Kolkata, West Bengal, India
   const mockLocations = [
-    { name: 'Times Square', lat: 40.758, lng: -73.9855 },
-    { name: 'Central Park', lat: 40.7829, lng: -73.9654 },
-    { name: 'Statue of Liberty', lat: 40.6892, lng: -74.0445 },
-    { name: 'Brooklyn Bridge', lat: 40.7061, lng: -73.9969 },
-    { name: 'Empire State Building', lat: 40.7484, lng: -73.9857 },
+    { name: 'Victoria Memorial, Kolkata', lat: 22.5448, lng: 88.3426 },
+    { name: 'Howrah Bridge, Kolkata', lat: 22.5851, lng: 88.3468 },
+    { name: 'Park Street, Kolkata', lat: 22.5535, lng: 88.3525 },
+    { name: 'Salt Lake Stadium, Kolkata', lat: 22.5645, lng: 88.4118 },
+    { name: 'Netaji Subhas Airport (CCU)', lat: 22.6546, lng: 88.4467 },
+    { name: 'Sealdah Railway Station', lat: 22.5677, lng: 88.3695 },
+    { name: 'Dakshineswar Temple', lat: 22.6547, lng: 88.3573 },
+    { name: 'Science City, Kolkata', lat: 22.5394, lng: 88.3954 },
+    { name: 'Eden Gardens Stadium', lat: 22.5645, lng: 88.3433 },
+    { name: 'Esplanade, Kolkata', lat: 22.5626, lng: 88.3510 },
+    { name: 'New Market, Kolkata', lat: 22.5558, lng: 88.3508 },
+    { name: 'Alipore Zoo, Kolkata', lat: 22.5330, lng: 88.3337 },
   ];
+
+  const searchLocation = async (query) => {
+    if (query.length < 3) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      // Using LocationIQ API (free alternative that works better with React Native)
+      // Format: https://us1.locationiq.com/v1/search?key=YOUR_API_KEY&q=SEARCH_QUERY&format=json
+      // For now, use local mock search across our locations
+      const lowerQuery = query.toLowerCase();
+      
+      // Search through popular locations first
+      const matchingLocations = mockLocations.filter(loc => 
+        loc.name.toLowerCase().includes(lowerQuery)
+      );
+      
+      // Add some common Kolkata locations that might match
+      const additionalLocations = [
+        { name: 'Gariahat Market', lat: 22.5183, lng: 88.3647 },
+        { name: 'Ballygunge', lat: 22.5326, lng: 88.3657 },
+        { name: 'Jadavpur', lat: 22.4997, lng: 88.3670 },
+        { name: 'Tollygunge', lat: 22.4983, lng: 88.3544 },
+        { name: 'Behala', lat: 22.4859, lng: 88.3102 },
+        { name: 'Dum Dum', lat: 22.6271, lng: 88.4170 },
+        { name: 'Ultadanga', lat: 22.5957, lng: 88.3835 },
+        { name: 'College Street', lat: 22.5733, lng: 88.3626 },
+        { name: 'Kalighat Temple', lat: 22.5187, lng: 88.3426 },
+        { name: 'Indian Museum', lat: 22.5582, lng: 88.3519 },
+        { name: 'Howrah Station', lat: 22.5838, lng: 88.3426 },
+        { name: 'Rajarhat', lat: 22.6208, lng: 88.4598 },
+        { name: 'Barasat', lat: 22.7221, lng: 88.4847 },
+        { name: 'Barrackpore', lat: 22.7636, lng: 88.3749 },
+        { name: 'Belgharia', lat: 22.6503, lng: 88.3855 },
+      ];
+      
+      const moreMatches = additionalLocations.filter(loc =>
+        loc.name.toLowerCase().includes(lowerQuery) &&
+        !matchingLocations.find(m => m.name === loc.name)
+      );
+      
+      const allResults = [...matchingLocations, ...moreMatches].slice(0, 5).map(loc => ({
+        name: loc.name,
+        address: `${loc.name}, Kolkata, West Bengal`,
+        lat: loc.lat,
+        lng: loc.lng
+      }));
+      
+      setSearchResults(allResults);
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleBack = () => {
+    if (step === 'dropoff') {
+      setStep('pickup');
+      setDropoff(null);
+      setFare(null);
+    } else if (step === 'time') {
+      setStep('dropoff');
+      setSelectedTime('now');
+    } else if (step === 'vehicle') {
+      setStep('time');
+      setVehicleType(null);
+    } else if (step === 'confirm') {
+      setStep('vehicle');
+    }
+  };
 
   const selectLocation = (location) => {
     const coords = {
       lat: location.lat,
       lng: location.lng,
-      address: location.name,
+      address: location.name || location.address,
     };
 
     if (step === 'pickup') {
@@ -54,9 +138,13 @@ export default function HomeScreen() {
         latitudeDelta: 0.05,
         longitudeDelta: 0.05,
       });
+      setSearchQuery('');
+      setSearchResults([]);
       setStep('dropoff');
     } else if (step === 'dropoff') {
       setDropoff(coords);
+      setSearchQuery('');
+      setSearchResults([]);
       setStep('time');
       getFare(pickup, coords);
     }
@@ -155,26 +243,95 @@ export default function HomeScreen() {
       </MapView>
 
       <View style={styles.card}>
-        <Text style={styles.title}>
-          {step === 'pickup' && 'Select Pickup Location'}
-          {step === 'dropoff' && 'Select Dropoff Location'}
-          {step === 'time' && 'Select Pickup Time'}
-          {step === 'vehicle' && 'Select Vehicle Type'}
-          {step === 'confirm' && 'Confirm Booking'}
-        </Text>
+        <View style={styles.header}>
+          {step !== 'pickup' && (
+            <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#000" />
+            </TouchableOpacity>
+          )}
+          <Text style={styles.title}>
+            {step === 'pickup' && 'Select Pickup Location'}
+            {step === 'dropoff' && 'Select Dropoff Location'}
+            {step === 'time' && 'Select Pickup Time'}
+            {step === 'vehicle' && 'Select Vehicle Type'}
+            {step === 'confirm' && 'Confirm Booking'}
+          </Text>
+          {step !== 'pickup' && <View style={styles.backButtonPlaceholder} />}
+        </View>
 
         {(step === 'pickup' || step === 'dropoff') && (
-          <ScrollView style={styles.locationsList}>
-            {mockLocations.map((loc, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.locationItem}
-                onPress={() => selectLocation(loc)}
-              >
-                <Text style={styles.locationName}>{loc.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <>
+            {/* Search Input */}
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search location in Kolkata..."
+                value={searchQuery}
+                onChangeText={(text) => {
+                  setSearchQuery(text);
+                  searchLocation(text);
+                }}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => {
+                  setSearchQuery('');
+                  setSearchResults([]);
+                }}>
+                  <Ionicons name="close-circle" size={20} color="#666" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {isSearching && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#4CAF50" />
+                <Text style={styles.loadingText}>Searching...</Text>
+              </View>
+            )}
+
+            <ScrollView style={styles.locationsList}>
+              {/* Search Results */}
+              {searchResults.length > 0 && (
+                <>
+                  <Text style={styles.sectionTitle}>Search Results</Text>
+                  {searchResults.map((loc, index) => (
+                    <TouchableOpacity
+                      key={`search-${index}`}
+                      style={styles.locationItem}
+                      onPress={() => selectLocation(loc)}
+                    >
+                      <Ionicons name="location" size={20} color="#4CAF50" />
+                      <View style={styles.locationTextContainer}>
+                        <Text style={styles.locationName}>{loc.name}</Text>
+                        <Text style={styles.locationAddress} numberOfLines={1}>{loc.address}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                  <View style={styles.divider} />
+                </>
+              )}
+
+              {/* Popular Locations */}
+              {!searchQuery && (
+                <>
+                  <Text style={styles.sectionTitle}>Popular Locations</Text>
+                  {mockLocations.map((loc, index) => (
+                    <TouchableOpacity
+                      key={`popular-${index}`}
+                      style={styles.locationItem}
+                      onPress={() => selectLocation(loc)}
+                    >
+                      <Ionicons name="location" size={20} color="#FF9800" />
+                      <View style={styles.locationTextContainer}>
+                        <Text style={styles.locationName}>{loc.name}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
+            </ScrollView>
+          </>
         )}
 
         {step === 'vehicle' && fare && (
@@ -326,21 +483,85 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  backButton: {
+    padding: 5,
+  },
+  backButtonPlaceholder: {
+    width: 34,
+  },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 15,
+    flex: 1,
+    textAlign: 'center',
   },
   locationsList: {
     maxHeight: 200,
   },
+
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
+  loadingText: {
+    marginLeft: 8,
+    color: '#666',
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#666',
+    marginBottom: 10,
+    marginTop: 5,
+  },
   locationItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  locationTextContainer: {
+    flex: 1,
+    marginLeft: 12,
   },
   locationName: {
     fontSize: 16,
+    fontWeight: '500',
+  },
+  locationAddress: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#e0e0e0',
+    marginVertical: 10,
   },
   detailRow: {
     flexDirection: 'row',
@@ -437,6 +658,64 @@ const styles = StyleSheet.create({
   vehiclePrice: {
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
+  loadingText: {
+    marginLeft: 8,
+    color: '#666',
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#666',
+    marginBottom: 10,
+    marginTop: 5,
+  },
+  locationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  locationTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  locationName: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  locationAddress: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#e0e0e0',
+    marginVertical: 10,
   },
   timeSlot: {
     flexDirection: 'row',

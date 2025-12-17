@@ -14,18 +14,20 @@ const calculateDistance = (lat1, lng1, lat2, lng2) => {
   return Math.round(distance * 10) / 10; // Round to 1 decimal
 };
 
-// Mock location search (returns predefined locations)
+// Mock location search - Popular locations in Kolkata, West Bengal, India
 const mockLocations = [
-  { name: 'Downtown Plaza', address: 'Downtown Plaza, City Center', lat: 40.7128, lng: -74.0060 },
-  { name: 'Central Station', address: 'Central Station, Main Street', lat: 40.7589, lng: -73.9851 },
-  { name: 'Airport Terminal', address: 'Airport Terminal, Highway 1', lat: 40.6413, lng: -73.7781 },
-  { name: 'Shopping Mall', address: 'Grand Shopping Mall, 5th Avenue', lat: 40.7614, lng: -73.9776 },
-  { name: 'Business District', address: 'Business District, Corporate Park', lat: 40.7549, lng: -73.9840 },
-  { name: 'University Campus', address: 'University Campus, College Road', lat: 40.8075, lng: -73.9626 },
-  { name: 'Hospital', address: 'City Hospital, Medical Center', lat: 40.7794, lng: -73.9632 },
-  { name: 'Park Avenue', address: 'Park Avenue, Residential Area', lat: 40.7673, lng: -73.9702 },
-  { name: 'Beach Front', address: 'Beach Front, Coastal Road', lat: 40.5731, lng: -73.9712 },
-  { name: 'Tech Hub', address: 'Tech Hub, Innovation Street', lat: 40.7484, lng: -73.9857 }
+  { name: 'Victoria Memorial', address: 'Victoria Memorial, Maidan, Kolkata', lat: 22.5448, lng: 88.3426 },
+  { name: 'Howrah Bridge', address: 'Howrah Bridge, Kolkata', lat: 22.5851, lng: 88.3468 },
+  { name: 'Park Street', address: 'Park Street, Kolkata', lat: 22.5535, lng: 88.3525 },
+  { name: 'Salt Lake Stadium', address: 'Salt Lake Stadium, Bidhannagar, Kolkata', lat: 22.5645, lng: 88.4118 },
+  { name: 'Netaji Subhas Airport', address: 'Netaji Subhas Chandra Bose International Airport (CCU)', lat: 22.6546, lng: 88.4467 },
+  { name: 'Sealdah Railway Station', address: 'Sealdah Railway Station, Kolkata', lat: 22.5677, lng: 88.3695 },
+  { name: 'Dakshineswar Temple', address: 'Dakshineswar Kali Temple, Kolkata', lat: 22.6547, lng: 88.3573 },
+  { name: 'Science City', address: 'Science City, EM Bypass, Kolkata', lat: 22.5394, lng: 88.3954 },
+  { name: 'Eden Gardens', address: 'Eden Gardens Cricket Stadium, Kolkata', lat: 22.5645, lng: 88.3433 },
+  { name: 'Esplanade', address: 'Esplanade, BBD Bagh, Kolkata', lat: 22.5626, lng: 88.3510 },
+  { name: 'New Market', address: 'New Market, Lindsay Street, Kolkata', lat: 22.5558, lng: 88.3508 },
+  { name: 'Alipore Zoo', address: 'Alipore Zoological Gardens, Kolkata', lat: 22.5330, lng: 88.3337 }
 ];
 
 // Search for location (mock autocomplete)
