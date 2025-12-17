@@ -209,11 +209,16 @@ exports.acceptRide = async (req, res) => {
       return res.status(400).json({ error: 'Ride is no longer available' });
     }
     
-    // Assign driver to ride
+    // Assign driver to ride and set driver status to on_ride
     ride.driver = req.user._id;
     ride.status = 'assigned';
     ride.accepted_at = new Date();
     await ride.save();
+    
+    // Update driver status to on_ride
+    await User.findByIdAndUpdate(req.user._id, {
+      driver_status: 'on_ride'
+    });
     
     const populatedRide = await Ride.findById(ride._id)
       .populate('customer', 'name phone profilePicture')
@@ -345,11 +350,12 @@ exports.completeTrip = async (req, res) => {
       status: 'completed'
     });
     
-    // Add to driver wallet
+    // Add to driver wallet and set driver back to online
     const driver = await User.findById(req.user._id);
     const driverOldBalance = driver.wallet_balance;
     driver.wallet_balance += driverEarning;
     driver.total_rides_completed += 1;
+    driver.driver_status = 'online'; // Set driver back to online after completing ride
     await driver.save();
     
     await Transaction.create({

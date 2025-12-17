@@ -11,14 +11,16 @@ import { driverAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
 export default function DriverDashboardScreen() {
-  const [isOnline, setIsOnline] = useState(false);
+  const { user, refreshUser } = useAuth();
+  const [isOnline, setIsOnline] = useState(user?.driver_status === 'online' || user?.driver_status === 'on_ride');
   const [earnings, setEarnings] = useState(null);
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
 
   useEffect(() => {
     loadEarnings();
-  }, []);
+    // Sync local state with user context
+    setIsOnline(user?.driver_status === 'online' || user?.driver_status === 'on_ride');
+  }, [user?.driver_status]);
 
   const loadEarnings = async () => {
     try {
@@ -42,6 +44,8 @@ export default function DriverDashboardScreen() {
         setIsOnline(false);
         Alert.alert('Success', 'You are now offline');
       }
+      // Refresh user context to update driver_status everywhere
+      await refreshUser();
     } catch (error) {
       Alert.alert('Error', error.error || 'Failed to update status');
     } finally {

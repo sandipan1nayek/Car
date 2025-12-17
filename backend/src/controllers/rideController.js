@@ -68,7 +68,7 @@ exports.createRide = async (req, res) => {
       status: 'completed'
     });
     
-    // Find nearby online drivers
+    // Find nearby online drivers (NOT on_ride status, NOT already assigned)
     const nearbyDrivers = await DriverLocation.find({
       is_online: true,
       location: {
@@ -82,9 +82,32 @@ exports.createRide = async (req, res) => {
       }
     }).populate('driver');
     
-    // Send ride request to nearest driver via Socket.io
-    if (nearbyDrivers.length > 0 && global.io) {
-      const nearestDriver = nearbyDrivers[0].driver;
+    // Filter drivers who are NOT on a ride and NOT already assigned
+    const availableDrivers = [];
+    for (const driverLoc of nearbyDrivers) {
+      const driver = driverLoc.driver;
+      if (!driver || driver.driver_status === 'on_ride') continue;
+      
+      // Check if driver has any active rides
+      const activeRide = await Ride.findOne({
+        driver: driver._id,
+        status: { $in: ['requested', 'assigned', 'en_route'] }
+      });
+      
+      if (!activeRide) {
+        availableDrivers.push({ driver, location: driverLoc });
+      }
+    }
+    
+    // Prioritize real drivers over dummy drivers
+    availableDrivers.sort((a, b) => {
+      if (a.driver.is_dummy === b.driver.is_dummy) return 0;
+      return a.driver.is_dummy ? 1 : -1; // Real drivers (is_dummy=false) come first
+    });
+    
+    // Send ride request to nearest available driver via Socket.io
+    if (availableDrivers.length > 0 && global.io) {
+      const nearestDriver = availableDrivers[0].driver;
       global.io.emit(`driver_${nearestDriver._id}_ride_request`, {
         rideId: ride._id,
         customer: {

@@ -68,6 +68,15 @@ export const AuthProvider = ({ children }) => {
     setUser({ ...user, ...userData });
   };
 
+  const refreshUser = async () => {
+    try {
+      const userData = await authAPI.getMe();
+      setUser(userData.user);
+    } catch (error) {
+      console.error('Refresh user error:', error);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -78,6 +87,7 @@ export const AuthProvider = ({ children }) => {
         signup,
         logout,
         updateUser,
+        refreshUser,
         isDriver: user?.is_driver || false,
         isManager: user?.is_manager || false,
         isAdmin: user?.is_admin || false,

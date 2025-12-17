@@ -60,8 +60,12 @@ const userSchema = new mongoose.Schema({
   },
   driver_status: {
     type: String,
-    enum: ['online', 'offline'],
+    enum: ['online', 'offline', 'on_ride'],
     default: 'offline'
+  },
+  is_dummy: {
+    type: Boolean,
+    default: false
   },
   driver_documents: {
     license: String,

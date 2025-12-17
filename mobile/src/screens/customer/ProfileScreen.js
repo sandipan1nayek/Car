@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,21 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 
 export default function ProfileScreen({ navigation }) {
-  const { user, logout, isDriver } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
+  const [refreshing, setRefreshing] = useState(false);
+  const isDriver = user?.is_driver;
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshUser();
+    setRefreshing(false);
+  };
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -21,7 +30,12 @@ export default function ProfileScreen({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
       <View style={styles.header}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
@@ -48,8 +62,16 @@ export default function ProfileScreen({ navigation }) {
         {isDriver && (
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Driver Status:</Text>
-            <Text style={styles.infoValue}>
-              {user?.driver_status || 'Offline'}
+            <Text style={[
+              styles.infoValue,
+              user?.driver_status === 'online' && styles.statusOnline,
+              user?.driver_status === 'on_ride' && styles.statusOnRide,
+              user?.driver_status === 'offline' && styles.statusOffline
+            ]}>
+              {user?.driver_status === 'online' && '🟢 Online'}
+              {user?.driver_status === 'on_ride' && '🔵 On Ride'}
+              {user?.driver_status === 'offline' && '⚫ Offline'}
+              {!user?.driver_status && '⚫ Offline'}
             </Text>
           </View>
         )}
@@ -287,6 +309,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 10,
+  },
+  statusOnline: {
+    color: '#4CAF50',
+    fontWeight: 'bold',
+  },
+  statusOnRide: {
+    color: '#2196F3',
+    fontWeight: 'bold',
+  },
+  statusOffline: {
+    color: '#9E9E9E',
   },
   logoutButton: {
     backgroundColor: '#fff',

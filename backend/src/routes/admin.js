@@ -52,20 +52,13 @@ router.get('/analytics', auth, requireAdmin, getAnalytics);
 // New driver approval routes
 router.get('/drivers/pending', auth, requireAdmin, getPendingDrivers);
 router.post('/drivers/:userId/approve', auth, requireAdmin, async (req, res) => {
-  console.log('🎯 INLINE ROUTE HANDLER');
-  console.log('req.params:', req.params);
-  console.log('req.params.userId:', req.params.userId);
-  
   try {
     const User = require('../models/User');
     const { userId } = req.params;
-    console.log('Looking for userId:', userId);
     
     const user = await User.findById(userId);
-    console.log('User result:', user ? user.name : 'NULL');
     
     if (!user) {
-      console.log('Sending 404');
       return res.status(404).json({ error: 'User not found' });
     }
     
@@ -78,7 +71,14 @@ router.post('/drivers/:userId/approve', auth, requireAdmin, async (req, res) => 
     user.driver_status = 'offline';
     await user.save();
     
-    console.log('✅ Driver approved successfully');
+    // When a real driver is approved, remove one dummy driver (if any exist)
+    const dummyDriver = await User.findOne({ is_dummy: true, is_driver: true });
+    if (dummyDriver) {
+      await User.findByIdAndDelete(dummyDriver._id);
+      console.log(`🗑️  Removed dummy driver: ${dummyDriver.name}`);
+    }
+    
+    console.log(`✅ Real driver approved: ${user.name}`);
     res.json({ message: 'Driver approved successfully', user: { id: user._id, name: user.name } });
   } catch (error) {
     console.error('❌ Error:', error);
