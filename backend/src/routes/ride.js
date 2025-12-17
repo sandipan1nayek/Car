@@ -16,6 +16,9 @@ router.post('/create', auth, createRide);
 // Get fare estimate
 router.get('/fare-estimate', auth, getFareEstimate);
 
+// Get ride history (must be before /:id route)
+router.get('/history', auth, getRideHistory);
+
 // Cancel ride
 router.post('/:id/cancel', auth, cancelRide);
 
@@ -24,8 +27,5 @@ router.get('/:id', auth, getRide);
 
 // Rate ride
 router.post('/:id/rate', auth, rateRide);
-
-// Get ride history
-router.get('/history', auth, getRideHistory);
 
 module.exports = router;

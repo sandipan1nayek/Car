@@ -11,6 +11,7 @@ import SignupScreen from '../screens/auth/SignupScreen';
 
 // Customer Screens
 import HomeScreen from '../screens/customer/HomeScreen';
+import RidesScreen from '../screens/customer/RidesScreen';
 import WalletScreen from '../screens/customer/WalletScreen';
 import ProfileScreen from '../screens/customer/ProfileScreen';
 import ChatScreen from '../screens/customer/ChatScreen';
@@ -50,6 +51,18 @@ function CustomerTabs() {
           headerTitle: 'Book a Ride',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      
+      <Tab.Screen
+        name="Rides"
+        component={RidesScreen}
+        options={{
+          tabBarLabel: 'Rides',
+          headerTitle: 'My Rides',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="car" size={size} color={color} />
           ),
         }}
       />
