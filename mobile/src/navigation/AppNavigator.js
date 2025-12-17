@@ -13,6 +13,7 @@ import SignupScreen from '../screens/auth/SignupScreen';
 import HomeScreen from '../screens/customer/HomeScreen';
 import WalletScreen from '../screens/customer/WalletScreen';
 import ProfileScreen from '../screens/customer/ProfileScreen';
+import ChatScreen from '../screens/customer/ChatScreen';
 
 // Driver Screens
 import DriverDashboardScreen from '../screens/driver/DriverDashboardScreen';
@@ -75,6 +76,18 @@ function CustomerTabs() {
           headerTitle: 'My Wallet',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="wallet" size={size} color={color} />
+          ),
+        }}
+      />
+      
+      <Tab.Screen
+        name="Chat"
+        component={ChatScreen}
+        options={{
+          tabBarLabel: 'Support',
+          headerTitle: 'Customer Support',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubbles" size={size} color={color} />
           ),
         }}
       />
