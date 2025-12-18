@@ -231,12 +231,19 @@ exports.cancelRide = async (req, res) => {
     ride.cancellation_reason = (req.body && req.body.reason) || 'Cancelled by customer';
     await ride.save();
     
-    // Notify driver if ride was assigned
-    if (ride.driver && global.io) {
-      global.io.emit(`driver_${ride.driver}_ride_cancelled`, {
-        rideId: ride._id,
-        reason: ride.cancellation_reason
+    // Reset driver status to 'online' so they can accept new rides
+    if (ride.driver) {
+      await User.findByIdAndUpdate(ride.driver, {
+        driver_status: 'online'
       });
+      
+      // Notify driver about cancellation
+      if (global.io) {
+        global.io.emit(`driver_${ride.driver}_ride_cancelled`, {
+          rideId: ride._id,
+          reason: ride.cancellation_reason
+        });
+      }
     }
     
     res.json({ 
@@ -339,6 +346,14 @@ exports.completeTrip = async (req, res) => {
     ride.completed_at = new Date();
     ride.fare_final = ride.fare_estimated;
     await ride.save();
+    
+    // Reset driver status to 'online' so they can accept new rides
+    if (ride.driver) {
+      await User.findByIdAndUpdate(ride.driver, {
+        driver_status: 'online',
+        $inc: { total_rides_completed: 1 }
+      });
+    }
     
     res.json({ message: 'Trip completed successfully', ride });
   } catch (error) {

@@ -66,38 +66,6 @@ function RidesScreen() {
     }
   };
 
-  // Dummy driver data for active rides
-  const getDummyDriver = (vehicleType) => {
-    const driverName = 'John Smith';
-    const carType = vehicleType === 'bike' ? 'Royal Enfield' : 
-                    vehicleType === 'shuttle' ? 'Tempo Traveller' : 'Honda City';
-    const carNumber = 'MH 02 AB 1234';
-    
-    let vehicle = '';
-    
-    if (vehicleType === 'car' || vehicleType === 'special') {
-      // Car & Personal Reservation: driver name, car type, car number
-      vehicle = `${carType} • ${carNumber}`;
-    } else if (vehicleType === 'bike') {
-      // Bike: driver name, car type (bike)
-      vehicle = carType;
-    } else if (vehicleType === 'shuttle') {
-      // Shuttle: car number only
-      vehicle = carNumber;
-    } else {
-      // Default if vehicle_type is undefined
-      vehicle = `${carType} • ${carNumber}`;
-    }
-    
-    return {
-      name: driverName,
-      phone: '+91 98765 43210',
-      rating: 4.8,
-      vehicle: vehicle,
-      photo: `https://ui-avatars.com/api/?name=John+Smith&size=200&background=random`,
-    };
-  };
-
   const getArrivingTime = (ride) => {
     const now = new Date();
     const createdAt = new Date(ride.createdAt);
@@ -358,7 +326,16 @@ function RidesScreen() {
               </View>
             ) : (
               activeRides.map((ride) => {
-                const driver = getDummyDriver(ride.vehicle_type);
+                // Use actual driver data from API response, fallback to dummy if not assigned
+                const actualDriver = ride.driver;
+                console.log('Ride ID:', ride._id, 'Driver:', actualDriver ? actualDriver.name : 'NO DRIVER');
+                const driverName = actualDriver?.name || 'Finding driver...';
+                const driverPhoto = actualDriver?.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(driverName)}&size=200&background=random`;
+                const driverRating = actualDriver?.driver_rating || 5.0;
+                const vehicleInfo = actualDriver?.vehicle_info 
+                  ? `${actualDriver.vehicle_info.make} ${actualDriver.vehicle_info.model} • ${actualDriver.vehicle_info.plate}`
+                  : 'Vehicle info not available';
+                
                 return (
                   <View key={ride._id} style={styles.rideCard}>
                     {/* Status Badge */}
@@ -369,14 +346,14 @@ function RidesScreen() {
                     {/* Driver Info */}
                     {ride.status !== 'requested' && (
                       <View style={styles.driverSection}>
-                        <Image source={{ uri: driver.photo }} style={styles.driverPhoto} />
+                        <Image source={{ uri: driverPhoto }} style={styles.driverPhoto} />
                         <View style={styles.driverInfo}>
-                          <Text style={styles.driverName}>{driver.name}</Text>
+                          <Text style={styles.driverName}>{driverName}</Text>
                           <View style={styles.ratingRow}>
                             <Ionicons name="star" size={16} color="#FFD700" />
-                            <Text style={styles.rating}>{driver.rating}</Text>
+                            <Text style={styles.rating}>{driverRating.toFixed(1)}</Text>
                           </View>
-                          <Text style={styles.vehicleInfo}>{driver.vehicle}</Text>
+                          <Text style={styles.vehicleInfo}>{vehicleInfo}</Text>
                           {ride.status === 'assigned' && (
                             <View style={styles.arrivingTimeContainer}>
                               <Ionicons name="time-outline" size={14} color="#4CAF50" />

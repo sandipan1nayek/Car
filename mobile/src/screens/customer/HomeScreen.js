@@ -290,7 +290,11 @@ export default function HomeScreen() {
               </View>
             )}
 
-            <ScrollView style={styles.locationsList}>
+            <ScrollView 
+              style={styles.locationsList}
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+            >
               {/* Search Results */}
               {searchResults.length > 0 && (
                 <>
@@ -477,7 +481,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: '50%',
+    maxHeight: '60%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
@@ -503,7 +507,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   locationsList: {
-    maxHeight: 200,
+    height: 300,
   },
 
   searchContainer: {
