@@ -1,15 +1,13 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL, TIMEOUT } from '../config/api.config';
 
-// Change this to your backend URL
-// For local testing: http://localhost:5000
-// For Expo Go on physical device: http://YOUR_IP:5000
-// For deployed backend: https://your-app.render.com
-const API_URL = 'http://192.168.0.18:5000/api';
+// API URL is now configured in api.config.js
+// Change USE_PRODUCTION to true in that file for deployment
 
 const api = axios.create({
-  baseURL: API_URL,
-  timeout: 10000,
+  baseURL: API_BASE_URL,
+  timeout: TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
   },

@@ -1,7 +1,8 @@
 import io from 'socket.io-client';
+import { SOCKET_URL } from '../config/api.config';
 
-// Change this to match your backend URL
-const SOCKET_URL = 'http://192.168.0.18:5000';
+// Socket URL is now configured in api.config.js
+// Change USE_PRODUCTION to true in that file for deployment
 
 let socket = null;
 
