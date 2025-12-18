@@ -9,11 +9,11 @@
 // 5. If all works, build production APK
 
 // ===== CONFIGURATION =====
-const DEPLOYED_BACKEND_URL = 'https://your-app.up.railway.app'; // REPLACE THIS
+const DEPLOYED_BACKEND_URL = 'https://car-production-ee85.up.railway.app'; // Your Railway URL
 const LOCAL_BACKEND_URL = 'http://192.168.0.18:5000';
 
 // Change this to true when deploying globally
-const USE_PRODUCTION = false;
+const USE_PRODUCTION = true;
 
 // ===== DO NOT EDIT BELOW THIS LINE =====
 const BASE_URL = USE_PRODUCTION ? DEPLOYED_BACKEND_URL : LOCAL_BACKEND_URL;
