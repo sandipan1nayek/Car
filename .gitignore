@@ -1,11 +1,17 @@
 # Progress Tracker (internal use only)
 PROGRESS_TRACKER.md
 
-# Environment variables
+# Environment variables - NEVER COMMIT THESE!
 .env
-.env.local
-.env.development
-.env.production
+.env.*
+backend/.env
+backend/.env.*
+mobile/.env
+mobile/.env.*
+*.env
+*.env.local
+*.env.development
+*.env.production
 
 # Dependencies
 node_modules/
