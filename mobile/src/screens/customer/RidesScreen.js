@@ -42,8 +42,8 @@ function RidesScreen() {
   );
 
   const loadRides = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
       const response = await rideAPI.getHistory();
       const history = response.rides || response || [];
       
@@ -58,7 +58,10 @@ function RidesScreen() {
       setActiveRides(active);
       setRideHistory(completed);
     } catch (error) {
-      console.error('Load rides error:', error);
+      // Silently handle auth errors when user isn't logged in yet
+      if (error.error !== 'No token provided') {
+        console.error('Load rides error:', error);
+      }
       setActiveRides([]);
       setRideHistory([]);
     } finally {
@@ -138,9 +141,10 @@ function RidesScreen() {
               await rideAPI.cancelRide(ride._id, true); // true = driver_late
               const userData = await authAPI.getMe();
               updateUser(userData.user);
-              setSelectedRide(ride);
+              await loadRides();
+              // Set ride with cancelled status for feedback modal
+              setSelectedRide({ ...ride, status: 'cancelled' });
               setShowFeedbackModal(true);
-              loadRides();
             } catch (error) {
               Alert.alert('Error', error.error || 'Failed to cancel ride');
             }
@@ -231,16 +235,17 @@ function RidesScreen() {
       await rideAPI.startTrip(selectedRide._id);
       Alert.alert('Ride Started', 'Your ride is now in progress. Enjoy your journey!');
       
-      // Simulate ride completion after 5 seconds (for demo)
+      // Simulate ride completion after 2 seconds (for demo)
       setTimeout(async () => {
         try {
           await rideAPI.completeTrip(selectedRide._id);
-          loadRides(); // Refresh to get updated status
+          await loadRides(); // Refresh to get updated status
+          // Show feedback instantly
           setShowFeedbackModal(true);
         } catch (error) {
           console.error('Complete trip error:', error);
         }
-      }, 5000);
+      }, 2000);
       
     } catch (error) {
       Alert.alert('Error', error.error || 'Failed to start trip');

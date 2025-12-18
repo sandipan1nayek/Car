@@ -203,6 +203,27 @@ exports.cancelRide = async (req, res) => {
       penalty = Math.round(fareAmount * 0.4);
       refund = fareAmount - penalty;
       description = `Cancellation refund for ride #${ride._id.toString().slice(-6)} (60% of ₹${fareAmount}). 40% penalty: ₹${penalty}`;
+      
+      // Pay cancellation fee to driver (only real drivers, not dummies)
+      if (ride.driver) {
+        const driver = await User.findById(ride.driver);
+        if (driver && !driver.is_dummy) {
+          const oldBalance = driver.wallet_balance;
+          driver.wallet_balance += penalty;
+          await driver.save();
+          
+          await Transaction.create({
+            user: driver._id,
+            type: 'cancellation_fee',
+            amount: penalty,
+            balance_before: oldBalance,
+            balance_after: driver.wallet_balance,
+            ride: ride._id,
+            description: `Cancellation fee from ride #${ride._id.toString().slice(-6)}`,
+            status: 'completed'
+          });
+        }
+      }
     }
 
     // Get customer and refund to wallet
@@ -347,12 +368,37 @@ exports.completeTrip = async (req, res) => {
     ride.fare_final = ride.fare_estimated;
     await ride.save();
     
-    // Reset driver status to 'online' so they can accept new rides
+    // Reset driver status to 'online' and pay driver
     if (ride.driver) {
-      await User.findByIdAndUpdate(ride.driver, {
-        driver_status: 'online',
-        $inc: { total_rides_completed: 1 }
-      });
+      const driver = await User.findById(ride.driver);
+      
+      // Only pay REAL drivers (not dummy drivers)
+      if (driver && !driver.is_dummy) {
+        const driverEarning = ride.fare_final;
+        const oldBalance = driver.wallet_balance;
+        driver.wallet_balance += driverEarning;
+        driver.driver_status = 'online';
+        driver.total_rides_completed = (driver.total_rides_completed || 0) + 1;
+        await driver.save();
+        
+        // Create transaction for driver
+        await Transaction.create({
+          user: driver._id,
+          type: 'ride_earning',
+          amount: driverEarning,
+          balance_before: oldBalance,
+          balance_after: driver.wallet_balance,
+          ride: ride._id,
+          description: `Earnings from ride #${ride._id.toString().slice(-6)}`,
+          status: 'completed'
+        });
+      } else {
+        // Just update dummy driver status
+        await User.findByIdAndUpdate(ride.driver, {
+          driver_status: 'online',
+          $inc: { total_rides_completed: 1 }
+        });
+      }
     }
     
     res.json({ message: 'Trip completed successfully', ride });

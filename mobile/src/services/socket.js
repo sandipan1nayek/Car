@@ -14,7 +14,11 @@ export const initializeSocket = (token) => {
     auth: {
       token,
     },
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'],
+    reconnection: true,
+    reconnectionDelay: 1000,
+    reconnectionAttempts: 5,
+    timeout: 20000,
   });
 
   socket.on('connect', () => {
@@ -26,7 +30,7 @@ export const initializeSocket = (token) => {
   });
 
   socket.on('connect_error', (error) => {
-    console.error('Socket connection error:', error);
+    console.error('Socket connection error:', error.message);
   });
 
   return socket;

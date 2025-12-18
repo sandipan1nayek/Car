@@ -8,11 +8,15 @@ async function cleanup() {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('✅ MongoDB Connected');
 
+    // Count rides before deletion
+    const rideCount = await Ride.countDocuments({});
+    console.log(`📊 Found ${rideCount} rides`);
+
     // Delete all rides
     const deletedRides = await Ride.deleteMany({});
     console.log(`🗑️  Deleted ${deletedRides.deletedCount} rides`);
 
-    // Reset all driver statuses to offline
+    // Reset all driver statuses to offline and clear ride count
     const updatedDrivers = await User.updateMany(
       { is_driver: true },
       { 
