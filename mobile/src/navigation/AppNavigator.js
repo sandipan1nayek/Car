@@ -37,7 +37,8 @@ function AuthStack() {
 
 // Customer Tabs
 function CustomerTabs() {
-  const { isDriver } = useAuth();
+  const { user } = useAuth();
+  const isDriver = user?.is_driver === true;
 
   return (
     <Tab.Navigator
@@ -70,7 +71,7 @@ function CustomerTabs() {
         }}
       />
       
-      {isDriver && (
+      {isDriver ? (
         <Tab.Screen
           name="Driver"
           component={DriverDashboardScreen}
@@ -82,7 +83,7 @@ function CustomerTabs() {
             ),
           }}
         />
-      )}
+      ) : null}
       
       <Tab.Screen
         name="Wallet"
